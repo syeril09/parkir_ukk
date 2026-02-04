@@ -1,0 +1,13 @@
+{
+  "name": "parkir-qris-generator",
+  "version": "1.0.0",
+  "description": "QRIS Generator for Parkir App",
+  "main": "generate-qris.js",
+  "scripts": {
+    "generate-qris": "node generate-qris.js"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.3",
+    "qris": "^0.0.1"
+  }
+}

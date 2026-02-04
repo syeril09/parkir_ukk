@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+<div id="qrcode"></div>
+<script>
+  // Generate QRIS dari nomor Dana
+  const danaNumber = '082141945168';
+  const qrisString = `https://link.dana.id/minta?full_url=https://qr.dana.id/v1/28101201202472391654262`;
+  
+  new QRCode(document.getElementById("qrcode"), {
+    text: qrisString,
+    width: 300,
+    height: 300,
+    colorDark: "#000000",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.H
+  });
+  
+  // Setelah QR code generate, klik kanan untuk save as image
+  console.log('✅ QRIS Generated');
+  console.log('📱 Dana: ' + danaNumber);
+  console.log('🔗 QRIS Data: ' + qrisString);
+  console.log('💾 Right-click QR Code → Save image as qris-dana.png');
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Generate QRIS",
+			"type": "shell",
+			"command": "node generate-qris.js"
+		}
+	]
+}
