@@ -22,12 +22,14 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS area_parkir (
   id INT PRIMARY KEY AUTO_INCREMENT,
   nama_area VARCHAR(100) NOT NULL UNIQUE,
+  jenis_area ENUM('mobil', 'bus', 'motor') NOT NULL,
   lokasi TEXT,
   kapasitas INT NOT NULL,
   harga_per_jam DECIMAL(10, 2) NOT NULL,
   deskripsi TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_jenis_area (jenis_area)
 );
 
 -- TABLE: JENIS KENDARAAN
@@ -114,10 +116,29 @@ INSERT IGNORE INTO jenis_kendaraan (nama_jenis) VALUES
 ('Bus');
 
 -- INSERT DATA DUMMY AREA PARKIR
-INSERT IGNORE INTO area_parkir (nama_area, lokasi, kapasitas, harga_per_jam, deskripsi) VALUES 
-('Area A', 'Lantai 1', 50, 5000, 'Area parkir lantai 1'),
-('Area B', 'Lantai 2', 40, 5000, 'Area parkir lantai 2'),
-('Area Motor', 'Samping Gedung', 100, 2000, 'Area khusus parkir motor');
+INSERT IGNORE INTO area_parkir (nama_area, jenis_area, lokasi, kapasitas, harga_per_jam, deskripsi) VALUES 
+('Area A', 'mobil', 'Lantai 1', 50, 5000, 'Area parkir lantai 1 untuk mobil'),
+('Area B', 'mobil', 'Lantai 2', 40, 5000, 'Area parkir lantai 2 untuk mobil'),
+('Area Motor', 'motor', 'Samping Gedung', 100, 2000, 'Area khusus parkir motor'),
+('Area Bus', 'bus', 'Halaman Belakang', 20, 10000, 'Area khusus parkir bus');
+
+-- INSERT DATA DUMMY TARIF PARKIR (All combinations)
+INSERT IGNORE INTO tarif_parkir (jenis_kendaraan_id, area_parkir_id, tarif_per_jam) VALUES 
+-- Motor tariffs
+(1, 1, 2000),
+(1, 2, 2000),
+(1, 3, 2000),
+(1, 4, 5000),
+-- Mobil tariffs
+(2, 1, 5000),
+(2, 2, 5000),
+(2, 3, 5000),
+(2, 4, 10000),
+-- Bus tariffs
+(3, 1, 10000),
+(3, 2, 10000),
+(3, 3, 10000),
+(3, 4, 10000);
 
 -- INSERT DATA DUMMY USERS
 -- Password: admin123 (hashed dengan bcrypt)

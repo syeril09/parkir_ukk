@@ -9,9 +9,12 @@ import { areaParkirAPI } from '@/lib/api';
 interface AreaParkir {
   id: number;
   nama: string;
+  jenisArea: 'mobil' | 'bus' | 'motor';
   lokasi: string;
   kapasitas: number;
   tersedia: number;
+  hargaPerJam?: number;
+  deskripsi?: string;
 }
 
 export default function KelolaAreaPage() {
@@ -22,6 +25,7 @@ export default function KelolaAreaPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     nama: '',
+    jenisArea: 'mobil',
     lokasi: '',
     kapasitas: 0,
     hargaPerJam: 0,
@@ -47,7 +51,7 @@ export default function KelolaAreaPage() {
 
   const handleAddClick = () => {
     setEditingId(null);
-    setFormData({ nama: '', lokasi: '', kapasitas: 0, hargaPerJam: 0, deskripsi: '' });
+    setFormData({ nama: '', jenisArea: 'mobil', lokasi: '', kapasitas: 0, hargaPerJam: 0, deskripsi: '' });
     setShowForm(true);
   };
 
@@ -55,10 +59,11 @@ export default function KelolaAreaPage() {
     setEditingId(area.id);
     setFormData({
       nama: area.nama,
+      jenisArea: area.jenisArea,
       lokasi: area.lokasi,
       kapasitas: area.kapasitas,
-      hargaPerJam: 0,
-      deskripsi: ''
+      hargaPerJam: (area as any).hargaPerJam ?? (area as any).harga_per_jam ?? 0,
+      deskripsi: (area as any).deskripsi ?? ''
     });
     setShowForm(true);
   };
@@ -68,6 +73,7 @@ export default function KelolaAreaPage() {
     try {
       const payload = {
         namaArea: formData.nama,
+        jenisArea: formData.jenisArea,
         lokasi: formData.lokasi,
         kapasitas: formData.kapasitas,
         hargaPerJam: formData.hargaPerJam,
@@ -99,7 +105,18 @@ export default function KelolaAreaPage() {
   const handleCancel = () => {
     setShowForm(false);
     setEditingId(null);
-    setFormData({ nama: '', lokasi: '', kapasitas: 0, hargaPerJam: 0, deskripsi: '' });
+    setFormData({ nama: '', jenisArea: 'mobil', lokasi: '', kapasitas: 0, hargaPerJam: 0, deskripsi: '' });
+  };
+
+  // Helper untuk display jenis area dengan icon
+  const getJenisAreaDisplay = (jenisArea: string | undefined) => {
+    const jenis = jenisArea ?? 'mobil';
+    const icons: Record<string, string> = { mobil: '🚗', bus: '🚌', motor: '🏍️' };
+    const labels: Record<string, string> = { mobil: 'Mobil', bus: 'Bus', motor: 'Motor' };
+    return {
+      icon: icons[jenis] || '🚗',
+      label: labels[jenis] || 'Mobil'
+    };
   };
 
   return (
@@ -147,9 +164,25 @@ export default function KelolaAreaPage() {
                           setFormData({ ...formData, nama: e.target.value })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder="Misal: Area A, Area Utama"
                         required
                       />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Jenis Area
+                      </label>
+                      <select
+                        value={formData.jenisArea}
+                        onChange={(e) =>
+                          setFormData({ ...formData, jenisArea: e.target.value as 'mobil' | 'bus' | 'motor' })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        required
+                      >
+                        <option value="mobil">🚗 Mobil</option>
+                        <option value="bus">🚌 Bus</option>
+                        <option value="motor">🏍️ Motor</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -163,10 +196,11 @@ export default function KelolaAreaPage() {
                           setFormData({ ...formData, lokasi: e.target.value })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder="Misal: Lantai 1, Depan Toko"
                         required
                       />
                     </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Kapasitas
@@ -182,7 +216,6 @@ export default function KelolaAreaPage() {
                           })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder="Jumlah slot parkir"
                         required
                         min="1"
                       />
@@ -204,7 +237,6 @@ export default function KelolaAreaPage() {
                           })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder="Misal: 5000"
                         required
                         min="1000"
                       />
@@ -221,7 +253,6 @@ export default function KelolaAreaPage() {
                           setFormData({ ...formData, deskripsi: e.target.value })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder="Misal: Area dengan AC, Aman 24 jam"
                       />
                     </div>
                   </div>
@@ -252,22 +283,34 @@ export default function KelolaAreaPage() {
                     <h3 className="font-semibold text-gray-900">{area.nama}</h3>
                     <span className="text-2xl">🅿️</span>
                   </div>
+                  <div className="mb-3">
+                    <p className="text-xs inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
+                      {getJenisAreaDisplay(area.jenisArea).icon} {getJenisAreaDisplay(area.jenisArea).label}
+                    </p>
+                  </div>
                   <p className="text-sm text-gray-600 mb-3">📍 {area.lokasi}</p>
                   <div className="mb-4">
-                    <p className="text-sm text-gray-600">Kapasitas</p>
+                    <p className="text-sm text-gray-600">Kapasitas Total</p>
                     <p className="text-2xl font-bold text-gray-900">{area.kapasitas}</p>
+                    <p className="text-sm text-gray-500 mt-1">Tersedia: <span className="text-green-600 font-semibold">{area.tersedia}</span> slot</p>
                   </div>
+                  {area.hargaPerJam && (
+                    <div className="mb-3 p-2 bg-gray-50 rounded">
+                      <p className="text-xs text-gray-600">Harga Per Jam</p>
+                      <p className="text-sm font-semibold text-gray-900">Rp {area.hargaPerJam.toLocaleString('id-ID')}</p>
+                    </div>
+                  )}
+                  {(area as any).deskripsi && (
+                    <p className="text-xs text-gray-500 mb-3 italic">{(area as any).deskripsi}</p>
+                  )}
                   <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
                     <div
                       className="bg-green-600 h-2 rounded-full"
                       style={{
-                        width: `${((area.kapasitas - area.tersedia) / area.kapasitas) * 100}%`
+                        width: `${((area.kapasitas - (area.tersedia || 0)) / area.kapasitas) * 100}%`
                       }}
                     ></div>
                   </div>
-                  <p className="text-xs text-gray-600 mb-4">
-                    Terpakai: {area.kapasitas - area.tersedia} / Tersedia: {area.tersedia}
-                  </p>
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleEditClick(area)}

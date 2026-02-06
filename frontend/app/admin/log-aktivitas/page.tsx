@@ -22,6 +22,7 @@ export default function LogAktivitasPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('semua');
+  const [userFilter, setUserFilter] = useState('semua');
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -74,12 +75,63 @@ export default function LogAktivitasPage() {
     });
   };
 
-  const getUniqueUsers = () => {
-    return [...new Set(logs.map((l) => l.user_id))].length;
+  const formatWaktuSingkat = (date: string) => {
+    const parsedDate = parseDate(date);
+    if (!parsedDate) return 'Invalid Date';
+    
+    return parsedDate.toLocaleString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
   };
 
-  const getUniqueTabel = () => {
-    return [...new Set(logs.map((l) => l.tabel_terkait).filter(Boolean))].length;
+  const getActivityIcon = (aktivitas: string): string => {
+    if (aktivitas.toLowerCase().includes('tambah') || aktivitas.toLowerCase().includes('create')) return '➕';
+    if (aktivitas.toLowerCase().includes('ubah') || aktivitas.toLowerCase().includes('update') || aktivitas.toLowerCase().includes('put')) return '✏️';
+    if (aktivitas.toLowerCase().includes('hapus') || aktivitas.toLowerCase().includes('delete')) return '🗑️';
+    if (aktivitas.toLowerCase().includes('login')) return '🔓';
+    if (aktivitas.toLowerCase().includes('logout')) return '🔒';
+    if (aktivitas.toLowerCase().includes('lihat') || aktivitas.toLowerCase().includes('get')) return '👁️';
+    return '📝';
+  };
+
+  const translateActivity = (aktivitas: string): string => {
+    const lower = aktivitas.toLowerCase();
+    
+    // User management
+    if (lower.includes('users') && lower.includes('create')) return 'Menambahkan pengguna baru';
+    if (lower.includes('users') && lower.includes('update')) return 'Memperbarui data pengguna';
+    if (lower.includes('users') && lower.includes('delete')) return 'Menghapus pengguna';
+    
+    // Kendaraan management
+    if (lower.includes('kendaraan') && lower.includes('create')) return 'Menambahkan data kendaraan';
+    if (lower.includes('kendaraan') && lower.includes('update')) return 'Memperbarui data kendaraan';
+    if (lower.includes('kendaraan') && lower.includes('delete')) return 'Menghapus data kendaraan';
+    
+    // Area parkir
+    if (lower.includes('area') && lower.includes('create')) return 'Membuat area parkir baru';
+    if (lower.includes('area') && lower.includes('update')) return 'Memperbarui area parkir';
+    if (lower.includes('area') && lower.includes('delete')) return 'Menghapus area parkir';
+    
+    // Transaksi
+    if (lower.includes('transaksi') && lower.includes('masuk')) return 'Kendaraan masuk parkir';
+    if (lower.includes('transaksi') && lower.includes('keluar')) return 'Kendaraan keluar parkir';
+    if (lower.includes('transaksi') && (lower.includes('update') || lower.includes('put'))) return 'Memproses pembayaran parkir';
+    if (lower.includes('transaksi') && lower.includes('get')) return 'Melihat data transaksi';
+    
+    // Auth
+    if (lower.includes('login')) return 'Login ke sistem';
+    if (lower.includes('logout')) return 'Logout dari sistem';
+    
+    // Handle generic API patterns
+    if (lower.includes('put') || lower.includes('update')) return 'Memperbarui data';
+    if (lower.includes('post') || lower.includes('create')) return 'Menambahkan data';
+    if (lower.includes('delete')) return 'Menghapus data';
+    if (lower.includes('get')) return 'Melihat data';
+    
+    // Default - return as is if no match
+    return aktivitas;
   };
 
   const filteredLogs = logs.filter((log) => {
@@ -88,20 +140,11 @@ export default function LogAktivitasPage() {
       log.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.username.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchFilter =
-      filter === 'semua' ||
-      (filter !== 'semua' && log.tabel_terkait === filter);
+    const matchTable = filter === 'semua' || log.tabel_terkait === filter;
+    const matchUser = userFilter === 'semua' || log.username === userFilter;
 
-    return matchSearch && matchFilter;
+    return matchSearch && matchTable && matchUser;
   });
-
-  // Get unique tables for filter
-  const uniqueTables = [...new Set(logs.map((l) => l.tabel_terkait).filter(Boolean))] as string[];
-
-  // Get activities per user
-  const getActivitiesByUser = (username: string) => {
-    return logs.filter((l) => l.username === username).length;
-  };
 
   const handleExportCSV = () => {
     const headers = ['ID', 'Pengguna', 'Username', 'Aktivitas', 'Tabel', 'Waktu'];
@@ -174,29 +217,6 @@ export default function LogAktivitasPage() {
                   </button>
                 </div>
               </div>
-
-              {/* Search & Filter */}
-              <div className="flex gap-4 flex-wrap">
-                <input
-                  type="text"
-                  placeholder="Cari aktivitas, nama, atau username..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="flex-1 min-w-64 px-4 py-2 border-2 border-blue-300 rounded-lg text-slate-900 font-semibold placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                />
-                <select
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  className="px-4 py-2 border-2 border-blue-300 rounded-lg text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                >
-                  <option value="semua">Semua Tabel</option>
-                  {uniqueTables.map((table) => (
-                    <option key={table} value={table}>
-                      {table}
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
 
             {/* Error Message */}
@@ -207,119 +227,110 @@ export default function LogAktivitasPage() {
             )}
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="bg-white rounded-lg shadow p-4">
-                <p className="text-gray-600 text-sm">Total Log</p>
-                <p className="text-3xl font-bold text-gray-900">{logs.length}</p>
+                <p className="text-gray-600 text-sm">📊 Total Aktivitas</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{logs.length}</p>
               </div>
               <div className="bg-white rounded-lg shadow p-4">
-                <p className="text-gray-600 text-sm">Pengguna Aktif</p>
-                <p className="text-3xl font-bold text-blue-600">{getUniqueUsers()}</p>
+                <p className="text-gray-600 text-sm">👥 Pengguna Aktif</p>
+                <p className="text-3xl font-bold text-blue-600 mt-1">{Array.from(new Set(logs.map((l) => l.user_id))).length}</p>
               </div>
               <div className="bg-white rounded-lg shadow p-4">
-                <p className="text-gray-600 text-sm">Tabel Termodifikasi</p>
-                <p className="text-3xl font-bold text-blue-600">{getUniqueTabel()}</p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-4">
-                <p className="text-gray-600 text-sm">Filter Cocok</p>
-                <p className="text-3xl font-bold text-sky-600">{filteredLogs.length}</p>
+                <p className="text-gray-600 text-sm">📁 Tabel Terkait</p>
+                <p className="text-3xl font-bold text-sky-600 mt-1">{Array.from(new Set(logs.map((l) => l.tabel_terkait).filter(Boolean))).length}</p>
               </div>
             </div>
 
-            {/* Top Users Card */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-              {[...new Set(logs.map((l) => l.username))]
-                .sort((a, b) => getActivitiesByUser(b) - getActivitiesByUser(a))
-                .slice(0, 3)
-                .map((username, idx) => {
-                  const user = logs.find((l) => l.username === username);
-                  return (
-                    <div key={username} className="bg-white rounded-lg shadow p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-gray-600 uppercase">Top User #{idx + 1}</p>
-                          <p className="text-lg font-semibold text-gray-900 mt-1">
-                            {user?.nama}
-                          </p>
-                          <p className="text-sm text-gray-600">@{username}</p>
+            {/* Activity Timeline */}
+            <div className="mb-6">
+              <div className="flex items-center gap-4 mb-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium">Pengguna:</label>
+                  <select
+                    value={userFilter}
+                    onChange={(e) => setUserFilter(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded bg-white text-sm"
+                  >
+                    <option value="semua">Semua</option>
+                    {Array.from(new Set(logs.map((l) => l.username))).map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {Array.from(new Set(logs.map((l) => l.tabel_terkait).filter(Boolean))).length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">Tabel:</label>
+                    <select
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded bg-white text-sm"
+                    >
+                      <option value="semua">Semua</option>
+                      {Array.from(new Set(logs.map((l) => l.tabel_terkait).filter(Boolean))).map((table: any) => (
+                        <option key={table} value={table}>{table}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <input
+                  type="text"
+                  placeholder="Cari aktivitas..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded bg-white text-sm flex-1 min-w-48"
+                />
+
+                <div className="ml-auto text-sm text-gray-600 whitespace-nowrap">
+                  Menampilkan <span className="font-semibold">{filteredLogs.length}</span> dari <span className="font-semibold">{logs.length}</span>
+                </div>
+              </div>
+
+              {error && (
+                <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+
+              {loading ? (
+                <div className="text-center py-10">
+                  <p className="text-gray-600">Memuat aktivitas...</p>
+                </div>
+              ) : filteredLogs.length === 0 ? (
+                <div className="p-8 bg-white rounded shadow text-center text-gray-600">
+                  <p>Tidak ada aktivitas yang sesuai</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredLogs.map((log) => (
+                    <div key={log.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition">
+                      <div className="flex gap-4 items-start">
+                        {/* Icon & Time */}
+                        <div className="flex flex-col items-center gap-2 pt-1 w-16">
+                          <div className="text-2xl">{getActivityIcon(log.aktivitas)}</div>
+                          <div className="text-xs text-gray-500 text-center">{formatWaktuSingkat(log.waktu_aktivitas)}</div>
                         </div>
-                        <span className="text-3xl font-bold text-blue-600">
-                          {getActivitiesByUser(username)}
-                        </span>
+
+                        {/* Content */}
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <p className="font-medium text-gray-900">{log.nama}</p>
+                              <p className="text-sm text-gray-600 mt-1">{translateActivity(log.aktivitas)}</p>
+                            </div>
+                            <div className="text-right text-xs text-gray-500">
+                              <div className="text-gray-400">{new Date(log.waktu_aktivitas).toLocaleDateString('id-ID')}</div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+              )}
             </div>
-
-            {/* Logs Table */}
-            {loading ? (
-              <div className="text-center py-10">
-                <p className="text-gray-600">Memuat data...</p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-lg shadow overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-sm font-medium text-gray-900">
-                        Waktu
-                      </th>
-                      <th className="px-6 py-3 text-left text-sm font-medium text-gray-900">
-                        Pengguna
-                      </th>
-                      <th className="px-6 py-3 text-left text-sm font-medium text-gray-900">
-                        Aktivitas
-                      </th>
-                      <th className="px-6 py-3 text-left text-sm font-medium text-gray-900">
-                        Tabel
-                      </th>
-                      <th className="px-6 py-3 text-left text-sm font-medium text-gray-900">
-                        ID Record
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {filteredLogs.length > 0 ? (
-                      filteredLogs.map((log) => (
-                        <tr key={log.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                            {formatTanggal(log.waktu_aktivitas)}
-                          </td>
-                          <td className="px-6 py-4 text-sm">
-                            <div>
-                              <p className="font-medium text-gray-900">{log.nama}</p>
-                              <p className="text-xs text-gray-600">@{log.username}</p>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            {log.aktivitas}
-                          </td>
-                          <td className="px-6 py-4 text-sm">
-                            {log.tabel_terkait ? (
-                              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                                {log.tabel_terkait}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
-                            {log.id_record || '-'}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={5} className="px-6 py-10 text-center text-gray-600">
-                          Tidak ada log yang sesuai
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </main>
         </div>
       </div>

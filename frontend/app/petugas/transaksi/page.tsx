@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import SidebarPetugas from '@/components/SidebarPetugas';
 import ProtectedLayout from '@/components/ProtectedLayout';
-import { transaksiAPI, kendaraanAPI } from '@/lib/api';
+import { transaksiAPI, kendaraanAPI, areaParkirAPI } from '@/lib/api';
 import Link from 'next/link';
 
 interface User {
@@ -33,6 +33,7 @@ function TransaksiContent() {
   const [kendaraanList, setKendaraanList] = useState<any[]>([]);
   const [selectedKendaraanId, setSelectedKendaraanId] = useState<number | null>(null);
   const [areaId, setAreaId] = useState(1);
+  const [areas, setAreas] = useState<any[]>([]);
   const [transaksiList, setTransaksiList] = useState<Transaksi[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -49,9 +50,27 @@ function TransaksiContent() {
 
     // Load kendaraan data
     loadKendaraanData();
+    // Load area data
+    loadAreaData();
     // Load transaksi list
     loadTransaksiList();
   }, [tipeTransaksi]);
+
+  const loadAreaData = async () => {
+    try {
+      const res = await areaParkirAPI.getAll();
+      setAreas(res.data || []);
+      // set default selected area to first available if current is invalid
+      if ((res.data || []).length > 0) {
+        const first = (res.data || [])[0];
+        if (!areas.find((a) => a.id === areaId)) {
+          setAreaId(first.id);
+        }
+      }
+    } catch (err: any) {
+      console.error('Error loading areas:', err);
+    }
+  };
 
   const loadKendaraanData = async () => {
     try {
@@ -276,10 +295,26 @@ function TransaksiContent() {
                         className="w-full px-4 py-2 border-2 border-sky-300 rounded-lg text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 bg-white disabled:bg-gray-200"
                         disabled={loading}
                       >
-                        <option value="1">Area Bus</option>
-                        <option value="2">Area Mobil</option>
-                        <option value="3">Area Motor</option>
+                        {areas.length === 0 ? (
+                          <option value="">Memuat area...</option>
+                        ) : (
+                          <>
+                            <option value="">-- Pilih Area Parkir --</option>
+                            {areas.map((area) => (
+                              <option
+                                key={area.id}
+                                value={area.id}
+                                disabled={typeof area.tersedia === 'number' && area.tersedia <= 0}
+                              >
+                                {area.nama} ({area.jenisArea || area.jenis_area || 'area'}) — {area.tersedia}/{area.kapasitas} tersedia
+                              </option>
+                            ))}
+                          </>
+                        )}
                       </select>
+                      {areas.length === 0 && (
+                        <p className="text-xs text-gray-500 mt-1">⚠️ Belum ada data area. Admin perlu menambahkan area parkir.</p>
+                      )}
                     </div>
 
                     {/* Detail Kendaraan - Display only */}

@@ -6,7 +6,7 @@ import Cookies from 'js-cookie';
 import SidebarAdmin from '@/components/SidebarAdmin';
 import DashboardHeader from '@/components/DashboardHeader';
 import ProtectedLayout from '@/components/ProtectedLayout';
-import { userAPI, areaParkirAPI, kendaraanAPI, transaksiAPI } from '@/lib/api';
+import { userAPI, areaParkirAPI, kendaraanAPI } from '@/lib/api';
 
 interface User {
   id: number;
@@ -20,8 +20,6 @@ interface DashboardStats {
   totalUsers: number;
   totalArea: number;
   totalKendaraan: number;
-  totalTransaksi: number;
-  totalRevenue: number;
 }
 
 interface RecentActivity {
@@ -37,9 +35,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     totalArea: 0,
-    totalKendaraan: 0,
-    totalTransaksi: 0,
-    totalRevenue: 0
+    totalKendaraan: 0
   });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,23 +58,16 @@ export default function AdminDashboard() {
 
         // Fetch all statistics
         try {
-          const [usersRes, areaRes, kendaraanRes, transaksiRes] = await Promise.all([
+          const [usersRes, areaRes, kendaraanRes] = await Promise.all([
             userAPI.getAll(),
             areaParkirAPI.getAll(),
-            kendaraanAPI.getAll(),
-            transaksiAPI.getAll()
+            kendaraanAPI.getAll()
           ]);
-
-          // Calculate total revenue from completed transactions
-          const totalRevenue = transaksiRes.data?.length ? 
-            transaksiRes.data.reduce((sum: number, t: any) => sum + (t.waktu_keluar && t.total_bayar ? parseFloat(t.total_bayar) : 0), 0) : 0;
 
           setStats({
             totalUsers: usersRes.data?.length || 0,
             totalArea: areaRes.data?.length || 0,
-            totalKendaraan: kendaraanRes.data?.length || 0,
-            totalTransaksi: transaksiRes.data?.length || 0,
-            totalRevenue: totalRevenue
+            totalKendaraan: kendaraanRes.data?.length || 0
           });
         } catch (apiError: any) {
           console.error('API Error:', apiError.message);
@@ -148,7 +137,7 @@ export default function AdminDashboard() {
             )}
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {/* Total Users Card */}
               <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition p-6 border-l-4 border-blue-500">
                 <div className="flex items-center justify-between">
@@ -187,39 +176,14 @@ export default function AdminDashboard() {
                   <div className="text-5xl opacity-20">🚗</div>
                 </div>
               </div>
-
-              {/* Total Transaksi Card */}
-              <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition p-6 border-l-4 border-blue-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Transaksi</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {stats.totalTransaksi}
-                    </p>
-                  </div>
-                  <div className="text-5xl opacity-20">💳</div>
-                </div>
-              </div>
-
-              {/* Total Revenue Card */}
-              <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition p-6 border-l-4 border-red-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Revenue</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      Rp{Math.round(stats.totalRevenue).toLocaleString('id-ID')}
-                    </p>
-                  </div>
-                  <div className="text-5xl opacity-20">💰</div>
-                </div>
-              </div>
+              {/* removed Transaksi & Revenue cards per requested admin cleanup */}
             </div>
 
             {/* Main Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Quick Actions */}
               <div className="lg:col-span-2 bg-white rounded-xl shadow-md p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">⚡ Menu Manajemen</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">⚡ Menu Utama</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* User Management */}
                   <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border-2 border-blue-200 hover:shadow-md transition cursor-pointer">

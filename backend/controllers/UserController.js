@@ -140,7 +140,7 @@ class UserController {
   static async update(req, res, next) {
     try {
       const { id } = req.params;
-      const { nama, email, no_telp, aktif } = req.body;
+      const { nama, username, email, no_telp, aktif, role } = req.body;
 
       // Cek user ada atau tidak
       const user = await UserModel.findById(id);
@@ -159,12 +159,36 @@ class UserController {
         });
       }
 
+      // Validasi username unik jika username diubah
+      if (username && username !== user.username) {
+        const existingUser = await UserModel.findByUsername(username);
+        if (existingUser) {
+          return res.status(400).json({
+            success: false,
+            message: 'Username sudah digunakan. Pilih username lain.'
+          });
+        }
+      }
+
+      // Validasi role jika ada
+      if (role) {
+        const validRoles = ['admin', 'petugas', 'owner'];
+        if (!validRoles.includes(role)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Role harus: admin, petugas, atau owner'
+          });
+        }
+      }
+
       // Update user
       await UserModel.update(id, {
         nama: nama || user.nama,
+        username: username || user.username,
         email: email || user.email,
         no_telp: no_telp || user.no_telp,
-        aktif: aktif !== undefined ? aktif : user.aktif
+        aktif: aktif !== undefined ? aktif : user.aktif,
+        role: role || user.role
       });
 
       res.status(200).json({

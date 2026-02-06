@@ -21,13 +21,15 @@ export default function ManajemenUserPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [usernameError, setUsernameError] = useState('');
   const [formData, setFormData] = useState({
     nama: '',
     username: '',
     email: '',
-    role: 'petugas',
+    role: '',
     password: ''
   });
 
@@ -50,7 +52,7 @@ export default function ManajemenUserPage() {
 
   const handleAddClick = () => {
     setEditingId(null);
-    setFormData({ nama: '', username: '', email: '', role: 'petugas', password: '' });
+    setFormData({ nama: '', username: '', email: '', role: '', password: '' });
     setShowForm(true);
   };
 
@@ -68,14 +70,42 @@ export default function ManajemenUserPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setUsernameError('');
+    setError('');
+    setSuccess('');
+
+    // Validasi role terpilih
+    if (!formData.role) {
+      setError('Pilih role terlebih dahulu');
+      return;
+    }
+
+    // Validasi username unik
+    const usernameExists = users.some((user) => 
+      user.username.toLowerCase() === formData.username.toLowerCase() &&
+      user.id !== editingId // Jika edit, abaikan user yang sedang diedit
+    );
+
+    if (usernameExists) {
+      setUsernameError('Username sudah digunakan. Pilih username lain.');
+      return;
+    }
+
     try {
       if (editingId) {
         await userAPI.update(editingId, formData);
+        setSuccess('User berhasil diupdate');
       } else {
         await userAPI.create(formData);
+        setSuccess('User berhasil ditambahkan');
       }
-      setShowForm(false);
-      loadUsers();
+      setTimeout(() => {
+        setShowForm(false);
+        loadUsers();
+        setUsernameError('');
+        setError('');
+        setSuccess('');
+      }, 1500);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Gagal menyimpan user');
     }
@@ -124,10 +154,17 @@ export default function ManajemenUserPage() {
 
             {/* Form Modal */}
             {showForm && (
-              <div className="mb-6 bg-white rounded-lg shadow p-6">
+              <div className="mb-6 bg-white rounded-lg shadow p-6 border-l-4 border-blue-600">
                 <h2 className="text-xl font-semibold mb-4">
                   {editingId ? 'Edit User' : 'Tambah User Baru'}
                 </h2>
+
+                {success && (
+                  <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg text-sm">
+                    ✅ {success}
+                  </div>
+                )}
+
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -146,17 +183,23 @@ export default function ManajemenUserPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Username
+                        Username <span className="text-red-600">*</span>
                       </label>
                       <input
                         type="text"
                         value={formData.username}
-                        onChange={(e) =>
-                          setFormData({ ...formData, username: e.target.value })
-                        }
-                        className="w-full px-3 py-2 border-2 border-blue-300 rounded-lg text-slate-900 font-semibold placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        onChange={(e) => {
+                          setFormData({ ...formData, username: e.target.value });
+                          setUsernameError('');
+                        }}
+                        className={`w-full px-3 py-2 border-2 rounded-lg text-slate-900 font-semibold placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${
+                          usernameError ? 'border-red-500' : 'border-blue-300'
+                        }`}
                         required
                       />
+                      {usernameError && (
+                        <p className="text-red-600 text-sm mt-1">⚠️ {usernameError}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -178,12 +221,14 @@ export default function ManajemenUserPage() {
                       </label>
                       <select
                         value={formData.role}
-                        onChange={(e) =>
-                          setFormData({ ...formData, role: e.target.value })
-                        }
+                        onChange={(e) => {
+                          setFormData({ ...formData, role: e.target.value });
+                          setError('');
+                        }}
                         className="w-full px-3 py-2 border-2 border-blue-300 rounded-lg text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                         required
                       >
+                        <option value="">-- Pilih Role --</option>
                         <option value="admin">Admin</option>
                         <option value="petugas">Petugas</option>
                         <option value="owner">Owner</option>
@@ -206,19 +251,19 @@ export default function ManajemenUserPage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-2 justify-end">
+                  <div className="flex gap-2 justify-end pt-4 border-t">
                     <button
                       type="button"
                       onClick={handleCancel}
-                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
                     >
                       Batal
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
                     >
-                      Simpan
+                      {editingId ? 'Perbarui' : 'Tambah'} User
                     </button>
                   </div>
                 </form>

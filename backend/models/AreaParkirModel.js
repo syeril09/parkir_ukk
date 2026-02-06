@@ -24,20 +24,20 @@ class AreaParkirModel {
 
   // Tambah area parkir baru
   static async create(data) {
-    const { namaArea, lokasi, kapasitas, hargaPerJam, deskripsi } = data;
+    const { namaArea, jenisArea, lokasi, kapasitas, hargaPerJam, deskripsi } = data;
     const [result] = await pool.execute(
-      'INSERT INTO area_parkir (nama_area, lokasi, kapasitas, harga_per_jam, deskripsi) VALUES (?, ?, ?, ?, ?)',
-      [namaArea, lokasi, kapasitas, hargaPerJam, deskripsi]
+      'INSERT INTO area_parkir (nama_area, jenis_area, lokasi, kapasitas, harga_per_jam, deskripsi) VALUES (?, ?, ?, ?, ?, ?)',
+      [namaArea, jenisArea, lokasi, kapasitas, hargaPerJam, deskripsi]
     );
     return result.insertId;
   }
 
   // Update area parkir
   static async update(id, data) {
-    const { namaArea, lokasi, kapasitas, hargaPerJam, deskripsi } = data;
+    const { namaArea, jenisArea, lokasi, kapasitas, hargaPerJam, deskripsi } = data;
     await pool.execute(
-      'UPDATE area_parkir SET nama_area = ?, lokasi = ?, kapasitas = ?, harga_per_jam = ?, deskripsi = ? WHERE id = ?',
-      [namaArea, lokasi, kapasitas, hargaPerJam, deskripsi, id]
+      'UPDATE area_parkir SET nama_area = ?, jenis_area = ?, lokasi = ?, kapasitas = ?, harga_per_jam = ?, deskripsi = ? WHERE id = ?',
+      [namaArea, jenisArea, lokasi, kapasitas, hargaPerJam, deskripsi, id]
     );
   }
 

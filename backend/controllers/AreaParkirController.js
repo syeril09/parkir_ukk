@@ -13,15 +13,27 @@ class AreaParkirController {
     try {
       const areas = await AreaParkirModel.findAll();
 
-      // Hitung kendaraan aktif untuk setiap area
+      // Normalisasi field nama dan jenis, lalu hitung kendaraan aktif untuk setiap area
       const areasWithStatus = await Promise.all(
         areas.map(async (area) => {
+          // normalisasi nama field dari DB (handle snake_case atau camelCase)
+          const normalized = {
+            id: area.id,
+            nama: area.nama_area ?? area.nama ?? area.namaArea,
+            jenisArea: area.jenis_area ?? 'mobil',
+            lokasi: area.lokasi,
+            kapasitas: area.kapasitas,
+            hargaPerJam: area.harga_per_jam ?? area.hargaPerJam ?? 0,
+            deskripsi: area.deskripsi ?? ''
+          };
+
           const kendaraanAktif = await AreaParkirModel.hitungKendaraanAktif(area.id);
+          const tersedia = normalized.kapasitas - kendaraanAktif;
           return {
-            ...area,
+            ...normalized,
             kendaraanAktif,
-            kapasitasTersedia: area.kapasitas - kendaraanAktif,
-            persentasiPenuh: Math.round((kendaraanAktif / area.kapasitas) * 100)
+            tersedia,
+            persentasiPenuh: Math.round((kendaraanAktif / normalized.kapasitas) * 100)
           };
         })
       );
@@ -53,11 +65,21 @@ class AreaParkirController {
       }
 
       const kendaraanAktif = await AreaParkirModel.hitungKendaraanAktif(id);
+      const normalized = {
+        id: area.id,
+        nama: area.nama_area ?? area.nama ?? area.namaArea,
+        jenisArea: area.jenis_area ?? 'mobil',
+        lokasi: area.lokasi,
+        kapasitas: area.kapasitas,
+        hargaPerJam: area.harga_per_jam ?? area.hargaPerJam ?? 0,
+        deskripsi: area.deskripsi ?? ''
+      };
+      const tersedia = normalized.kapasitas - kendaraanAktif;
       const areaWithStatus = {
-        ...area,
+        ...normalized,
         kendaraanAktif,
-        kapasitasTersedia: area.kapasitas - kendaraanAktif,
-        persentasiPenuh: Math.round((kendaraanAktif / area.kapasitas) * 100)
+        tersedia,
+        persentasiPenuh: Math.round((kendaraanAktif / normalized.kapasitas) * 100)
       };
 
       res.status(200).json({
@@ -75,13 +97,22 @@ class AreaParkirController {
    */
   static async create(req, res, next) {
     try {
-      const { namaArea, lokasi, kapasitas, hargaPerJam, deskripsi } = req.body;
+      const { namaArea, jenisArea, lokasi, kapasitas, hargaPerJam, deskripsi } = req.body;
 
       // Validasi input
-      if (!namaArea || !kapasitas || !hargaPerJam) {
+      if (!namaArea || !jenisArea || !kapasitas || !hargaPerJam) {
         return res.status(400).json({
           success: false,
-          message: 'Nama area, kapasitas, dan harga per jam harus diisi'
+          message: 'Nama area, jenis area, kapasitas, dan harga per jam harus diisi'
+        });
+      }
+
+      // Validasi jenis area
+      const validJenis = ['mobil', 'bus', 'motor'];
+      if (!validJenis.includes(jenisArea)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Jenis area harus: mobil, bus, atau motor'
         });
       }
 
@@ -96,6 +127,7 @@ class AreaParkirController {
       // Tambah area
       const areaId = await AreaParkirModel.create({
         namaArea,
+        jenisArea,
         lokasi: lokasi || null,
         kapasitas,
         hargaPerJam,
@@ -119,7 +151,7 @@ class AreaParkirController {
   static async update(req, res, next) {
     try {
       const { id } = req.params;
-      const { namaArea, lokasi, kapasitas, hargaPerJam, deskripsi } = req.body;
+      const { namaArea, jenisArea, lokasi, kapasitas, hargaPerJam, deskripsi } = req.body;
 
       // Cek area ada atau tidak
       const area = await AreaParkirModel.findById(id);
@@ -128,6 +160,17 @@ class AreaParkirController {
           success: false,
           message: 'Area parkir tidak ditemukan'
         });
+      }
+
+      // Validasi jenis area jika ada input
+      if (jenisArea) {
+        const validJenis = ['mobil', 'bus', 'motor'];
+        if (!validJenis.includes(jenisArea)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Jenis area harus: mobil, bus, atau motor'
+          });
+        }
       }
 
       // Validasi kapasitas dan harga jika ada input
@@ -141,6 +184,7 @@ class AreaParkirController {
       // Update area
       await AreaParkirModel.update(id, {
         namaArea: namaArea || area.nama_area,
+        jenisArea: jenisArea || area.jenis_area,
         lokasi: lokasi !== undefined ? lokasi : area.lokasi,
         kapasitas: kapasitas || area.kapasitas,
         hargaPerJam: hargaPerJam || area.harga_per_jam,

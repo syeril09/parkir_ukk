@@ -111,12 +111,12 @@ class TransaksiParkirController {
         });
       }
 
-      // Dapatkan tarif berdasarkan jenis kendaraan dan area
-      const tarifPerJam = await AreaParkirModel.getTarifByVehicleAndArea(kendaraan.jenis_kendaraan_id, areaId);
-      if (!tarifPerJam) {
+      // Gunakan tarif dari area (harga_per_jam)
+      const tarifPerJam = area.harga_per_jam || 0;
+      if (tarifPerJam <= 0) {
         return res.status(400).json({
           success: false,
-          message: 'Tarif parkir untuk jenis kendaraan ini di area tersebut belum ditentukan'
+          message: 'Tarif parkir untuk area ini belum ditentukan. Hubungi admin.'
         });
       }
 

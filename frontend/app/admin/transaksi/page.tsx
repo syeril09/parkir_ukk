@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Cookies from 'js-cookie';
 import AdminSidebar from '@/components/AdminSidebar';
 import DashboardHeader from '@/components/DashboardHeader';
 import ProtectedLayout from '@/components/ProtectedLayout';
@@ -25,6 +27,23 @@ interface Transaksi {
 }
 
 export default function LihatTransaksiPage() {
+  const router = useRouter();
+
+  // Redirect admin users away from this page
+  useEffect(() => {
+    try {
+      const userStr = Cookies.get('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user.role === 'admin') {
+          router.push('/admin');
+        }
+      }
+    } catch (err) {
+      // ignore parsing errors
+    }
+  }, [router]);
+
   const [transaksi, setTransaksi] = useState<Transaksi[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

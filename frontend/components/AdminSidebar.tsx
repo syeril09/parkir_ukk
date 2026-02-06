@@ -11,7 +11,7 @@ export default function AdminSidebar() {
     { name: 'User Management', icon: '👥', href: '/admin/users' },
     { name: 'Area Parkir', icon: '🅿️', href: '/admin/area' },
     { name: 'Kendaraan', icon: '🚗', href: '/admin/kendaraan' },
-    { name: 'Transaksi', icon: '💰', href: '/admin/transaksi' },
+    // Transaksi removed for admin role
     { name: 'Log Aktivitas', icon: '📝', href: '/admin/log-aktivitas' }
   ];
 

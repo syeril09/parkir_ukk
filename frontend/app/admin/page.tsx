@@ -6,7 +6,7 @@ import Cookies from 'js-cookie';
 import AdminSidebar from '@/components/AdminSidebar';
 import DashboardHeader from '@/components/DashboardHeader';
 import ProtectedLayout from '@/components/ProtectedLayout';
-import { areaParkirAPI, transaksiAPI, userAPI, kendaraanAPI } from '@/lib/api';
+import { areaParkirAPI, userAPI, kendaraanAPI } from '@/lib/api';
 
 interface User {
   id: number;
@@ -20,7 +20,6 @@ interface DashboardStats {
   totalUsers: number;
   totalArea: number;
   totalKendaraan: number;
-  totalTransaksi: number;
 }
 
 export default function AdminDashboard() {
@@ -29,8 +28,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     totalArea: 0,
-    totalKendaraan: 0,
-    totalTransaksi: 0
+    totalKendaraan: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,7 +44,7 @@ export default function AdminDashboard() {
 
         // Fetch statistics with error handling
         try {
-          const [usersRes, areaRes, kendaraanRes, transaksiRes] = await Promise.all([
+          const [usersRes, areaRes, kendaraanRes] = await Promise.all([
             userAPI.getAll().catch(err => {
               console.warn('Failed to fetch users:', err.message);
               return { total: 0 };
@@ -58,18 +56,13 @@ export default function AdminDashboard() {
             kendaraanAPI.getAll().catch(err => {
               console.warn('Failed to fetch kendaraan:', err.message);
               return { total: 0 };
-            }),
-            transaksiAPI.getAll().catch(err => {
-              console.warn('Failed to fetch transaksi:', err.message);
-              return { total: 0 };
             })
           ]);
 
           setStats({
             totalUsers: usersRes?.data?.length || usersRes?.total || 0,
             totalArea: areaRes?.data?.length || areaRes?.total || 0,
-            totalKendaraan: kendaraanRes?.data?.length || kendaraanRes?.total || 0,
-            totalTransaksi: transaksiRes?.data?.length || transaksiRes?.total || 0
+            totalKendaraan: kendaraanRes?.data?.length || kendaraanRes?.total || 0
           });
         } catch (statsErr: any) {
           console.warn('Error fetching dashboard stats:', statsErr.message);
@@ -77,8 +70,7 @@ export default function AdminDashboard() {
           setStats({
             totalUsers: 0,
             totalArea: 0,
-            totalKendaraan: 0,
-            totalTransaksi: 0
+            totalKendaraan: 0
           });
         }
 
@@ -165,17 +157,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Total Transaksi Card */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Transaksi Hari Ini</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      {loading ? '-' : stats.totalTransaksi}
-                    </p>
-                  </div>
-                  <div className="text-4xl">💰</div>
-                </div>
-              </div>
+              {/* Transaksi stats removed per admin request */}
             </div>
 
             {/* Quick Actions */}
@@ -193,11 +175,7 @@ export default function AdminDashboard() {
                     className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition">
                     Tambah Area
                   </button>
-                  <button 
-                    onClick={() => router.push('/admin/transaksi')}
-                    className="w-full bg-sky-600 hover:bg-sky-700 text-white py-2 px-4 rounded-lg transition">
-                    Lihat Laporan
-                  </button>
+                  {/* 'Lihat Laporan' removed (transaksi) */}
                 </div>
               </div>
 
@@ -213,9 +191,7 @@ export default function AdminDashboard() {
                   <a href="/admin/kendaraan" className="block text-blue-600 hover:text-blue-800">
                     → Daftar Kendaraan
                   </a>
-                  <a href="/admin/transaksi" className="block text-blue-600 hover:text-blue-800">
-                    → Lihat Transaksi
-                  </a>
+                  {/* Lihat Transaksi link removed */}
                   <a href="/admin/log-aktivitas" className="block text-blue-600 hover:text-blue-800">
                     → Log Aktivitas
                   </a>

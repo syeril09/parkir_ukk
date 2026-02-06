@@ -52,10 +52,10 @@ class UserModel {
 
   // Update user
   static async update(id, data) {
-    const { nama, email, no_telp, aktif } = data;
+    const { nama, username, email, no_telp, aktif, role } = data;
     await pool.execute(
-      'UPDATE users SET nama = ?, email = ?, no_telp = ?, aktif = ? WHERE id = ?',
-      [nama, email, no_telp, aktif, id]
+      'UPDATE users SET nama = ?, username = ?, email = ?, no_telp = ?, aktif = ?, role = ? WHERE id = ?',
+      [nama, username, email, no_telp, aktif, role, id]
     );
   }
 
