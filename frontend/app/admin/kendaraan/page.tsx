@@ -5,6 +5,7 @@ import { flushSync } from 'react-dom';
 import AdminSidebar from '@/components/AdminSidebar';
 import DashboardHeader from '@/components/DashboardHeader';
 import ProtectedLayout from '@/components/ProtectedLayout';
+import Modal from '@/components/Modal';
 import { kendaraanAPI } from '@/lib/api';
 
 interface Kendaraan {
@@ -168,12 +169,13 @@ export default function DaftarKendaraanPage() {
             )}
 
             {/* Form Modal */}
-            {showForm && (
-              <div className="mb-6 bg-white rounded-lg shadow p-6">
-                <h2 className="text-xl font-semibold mb-4">
-                  {editingId ? 'Edit Kendaraan' : 'Tambah Kendaraan Baru'}
-                </h2>
-                <form key={`form-${editingId}`} onSubmit={handleSubmit} className="space-y-4">
+            <Modal
+              isOpen={showForm}
+              title={editingId ? 'Edit Kendaraan' : 'Tambah Kendaraan Baru'}
+              onClose={handleCancel}
+              size="md"
+            >
+              <form key={`form-${editingId}`} onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -260,8 +262,7 @@ export default function DaftarKendaraanPage() {
                     </button>
                   </div>
                 </form>
-              </div>
-            )}
+            </Modal>
 
             {/* Stats Summary */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

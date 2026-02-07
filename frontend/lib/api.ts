@@ -163,6 +163,54 @@ export const areaParkirAPI = {
 };
 
 /**
+ * TARIF PARKIR API CALLS
+ */
+
+export const tarifParkirAPI = {
+  // Get all tarif
+  getAll: async () => {
+    const response = await apiClient.get('/tarif-parkir');
+    return response.data;
+  },
+
+  // Get tarif by ID
+  getById: async (id: number) => {
+    const response = await apiClient.get(`/tarif-parkir/${id}`);
+    return response.data;
+  },
+
+  // Get tarif by vehicle type
+  getByVehicleType: async (vehicleTypeId: number) => {
+    const response = await apiClient.get(`/tarif-parkir/vehicle/${vehicleTypeId}`);
+    return response.data;
+  },
+
+  // Get tarif by area
+  getByArea: async (areaId: number) => {
+    const response = await apiClient.get(`/tarif-parkir/area/${areaId}`);
+    return response.data;
+  },
+
+  // Create tarif
+  create: async (data: any) => {
+    const response = await apiClient.post('/tarif-parkir', data);
+    return response.data;
+  },
+
+  // Update tarif
+  update: async (id: number, data: any) => {
+    const response = await apiClient.put(`/tarif-parkir/${id}`, data);
+    return response.data;
+  },
+
+  // Delete tarif
+  delete: async (id: number) => {
+    const response = await apiClient.delete(`/tarif-parkir/${id}`);
+    return response.data;
+  }
+};
+
+/**
  * TRANSAKSI PARKIR API CALLS
  */
 

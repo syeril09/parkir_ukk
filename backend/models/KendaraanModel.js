@@ -78,6 +78,30 @@ class KendaraanModel {
   static async delete(id) {
     await pool.execute('DELETE FROM kendaraan WHERE id = ?', [id]);
   }
-}
 
-module.exports = KendaraanModel;
+  // Cari jenis kendaraan berdasarkan ID
+  static async findJenisKendaraanById(id) {
+    const [rows] = await pool.execute(
+      'SELECT * FROM jenis_kendaraan WHERE id = ?',
+      [id]
+    );
+    return rows[0];
+  }
+
+  // Ambil semua jenis kendaraan
+  static async findAllJenisKendaraan() {
+    const [rows] = await pool.execute(
+      'SELECT * FROM jenis_kendaraan ORDER BY nama_jenis ASC'
+    );
+    return rows;
+  }
+
+  // Buat jenis kendaraan baru
+  static async createJenisKendaraan(namJenis) {
+    const [result] = await pool.execute(
+      'INSERT INTO jenis_kendaraan (nama_jenis) VALUES (?)',
+      [namJenis]
+    );
+    return result.insertId;
+  }
+}

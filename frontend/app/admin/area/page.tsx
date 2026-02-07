@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import AdminSidebar from '@/components/AdminSidebar';
 import DashboardHeader from '@/components/DashboardHeader';
 import ProtectedLayout from '@/components/ProtectedLayout';
+import Modal from '@/components/Modal';
 import { areaParkirAPI } from '@/lib/api';
 
 interface AreaParkir {
@@ -145,12 +146,13 @@ export default function KelolaAreaPage() {
             )}
 
             {/* Form Modal */}
-            {showForm && (
-              <div className="mb-6 bg-white rounded-lg shadow p-6">
-                <h2 className="text-xl font-semibold mb-4">
-                  {editingId ? 'Edit Area Parkir' : 'Tambah Area Parkir Baru'}
-                </h2>
-                <form onSubmit={handleSubmit} className="space-y-4">
+            <Modal
+              isOpen={showForm}
+              title={editingId ? 'Edit Area Parkir' : 'Tambah Area Parkir Baru'}
+              onClose={handleCancel}
+              size="md"
+            >
+              <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -272,8 +274,7 @@ export default function KelolaAreaPage() {
                     </button>
                   </div>
                 </form>
-              </div>
-            )}
+            </Modal>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">

@@ -7,6 +7,7 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const kendaraanRoutes = require('./routes/kendaraanRoutes');
 const areaParkirRoutes = require('./routes/areaParkirRoutes');
+const tarifParkirRoutes = require('./routes/tarifParkirRoutes');
 const transaksiParkirRoutes = require('./routes/transaksiParkirRoutes');
 const logAktivitasRoutes = require('./routes/logAktivitasRoutes');
 
@@ -60,6 +61,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/kendaraan', kendaraanRoutes);
 app.use('/api/area-parkir', areaParkirRoutes);
+app.use('/api/tarif-parkir', tarifParkirRoutes);
 app.use('/api/transaksi', transaksiParkirRoutes);
 app.use('/api/log-aktivitas', logAktivitasRoutes);
 

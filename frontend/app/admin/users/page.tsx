@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/AdminSidebar';
 import DashboardHeader from '@/components/DashboardHeader';
 import ProtectedLayout from '@/components/ProtectedLayout';
+import Modal from '@/components/Modal';
 import { userAPI } from '@/lib/api';
 
 interface User {
@@ -153,19 +154,19 @@ export default function ManajemenUserPage() {
             )}
 
             {/* Form Modal */}
-            {showForm && (
-              <div className="mb-6 bg-white rounded-lg shadow p-6 border-l-4 border-blue-600">
-                <h2 className="text-xl font-semibold mb-4">
-                  {editingId ? 'Edit User' : 'Tambah User Baru'}
-                </h2>
+            <Modal
+              isOpen={showForm}
+              title={editingId ? 'Edit User' : 'Tambah User Baru'}
+              onClose={handleCancel}
+              size="md"
+            >
+              {success && (
+                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg text-sm">
+                  ✅ {success}
+                </div>
+              )}
 
-                {success && (
-                  <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg text-sm">
-                    ✅ {success}
-                  </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -267,8 +268,7 @@ export default function ManajemenUserPage() {
                     </button>
                   </div>
                 </form>
-              </div>
-            )}
+            </Modal>
 
             {/* Users Table */}
             {loading ? (
