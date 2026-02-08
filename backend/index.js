@@ -2,6 +2,11 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+console.log('\n📋 Loading environment variables...');
+console.log(`   PORT: ${process.env.PORT || 5000}`);
+console.log(`   DB_HOST: ${process.env.DB_HOST || 'localhost'}`);
+console.log(`   DB_NAME: ${process.env.DB_NAME || 'db_parkir1'}\n`);
+
 // Import routes
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
@@ -50,10 +55,23 @@ app.get('/', (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Server sedang berjalan'
-  });
+  // perform lightweight DB check
+  try {
+    const db = require('./config/database');
+    // If isReady flag is available use it, otherwise try a simple query
+    const isReady = typeof db.isReady === 'function' ? db.isReady() : false;
+    if (isReady) {
+      return res.json({ success: true, message: 'Server dan database terhubung' });
+    }
+    // fallback try simple query
+    db.execute('SELECT 1').then(() => {
+      res.json({ success: true, message: 'Server dan database terhubung' });
+    }).catch(() => {
+      res.status(503).json({ success: false, message: 'Server berjalan tetapi database tidak terhubung' });
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: 'Health check gagal', error: e.message });
+  }
 });
 
 // API Routes

@@ -119,9 +119,10 @@ class TarifParkirController {
       
       if (existingJenis) {
         jenisKendaraanId = existingJenis.id;
-        // Cek kombinasi jenis kendaraan sudah ada
-        const exists = await TarifParkirModel.findByVehicleType(jenisKendaraanId);
-        if (exists && exists.length > 0) {
+        console.log(`[TARIF CREATE] Found existing jenis: "${namaJenis}" (ID: ${jenisKendaraanId})`);
+        // Cek kombinasi jenis kendaraan sudah ada di tarif
+        const existingTarif = await TarifParkirModel.findByVehicleType(jenisKendaraanId);
+        if (existingTarif && existingTarif.length > 0) {
           return res.status(400).json({
             success: false,
             message: `Tarif untuk ${namaJenis} sudah ada`
@@ -130,14 +131,15 @@ class TarifParkirController {
       } else {
         // Buat jenis kendaraan baru
         jenisKendaraanId = await KendaraanModel.createJenisKendaraan(namaJenis);
+        console.log(`[TARIF CREATE] Created new jenis: "${namaJenis}" (ID: ${jenisKendaraanId})`);
       }
 
       // Tambah tarif
       const tarifId = await TarifParkirModel.create({
         jenisKendaraanId,
-        tarifPerJam,
-        areaParkId: null
+        tarifPerJam
       });
+      console.log(`[TARIF CREATE SUCCESS] Tarif ID: ${tarifId}, Jenis ID: ${jenisKendaraanId}, Tarif: ${tarifPerJam}`);
 
       // Fetch tarif yang baru dibuat
       const tarifCreated = await TarifParkirModel.findById(tarifId);
@@ -149,6 +151,7 @@ class TarifParkirController {
         data: tarifCreated
       });
     } catch (error) {
+      console.error('[TARIF CREATE ERROR]', error.message);
       next(error);
     }
   }

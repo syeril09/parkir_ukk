@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import SidebarPetugas from '@/components/SidebarPetugas';
 import ProtectedLayout from '@/components/ProtectedLayout';
-import { transaksiAPI, kendaraanAPI, areaParkirAPI } from '@/lib/api';
+import { transaksiAPI, kendaraanAPI, areaParkirAPI, tarifParkirAPI } from '@/lib/api';
 import Link from 'next/link';
 
 interface User {
@@ -34,6 +34,8 @@ function TransaksiContent() {
   const [selectedKendaraanId, setSelectedKendaraanId] = useState<number | null>(null);
   const [areaId, setAreaId] = useState(1);
   const [areas, setAreas] = useState<any[]>([]);
+  const [tarifList, setTarifList] = useState<any[]>([]);
+  const [selectedTarif, setSelectedTarif] = useState<any | null>(null);
   const [transaksiList, setTransaksiList] = useState<Transaksi[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -56,6 +58,29 @@ function TransaksiContent() {
     loadTransaksiList();
   }, [tipeTransaksi]);
 
+  useEffect(() => {
+    // Load tarif when area changes
+    if (areaId) {
+      loadTarif();
+    }
+  }, [areaId]);
+
+  useEffect(() => {
+    // Auto-select tarif when kendaraan changes
+    if (selectedKendaraanId) {
+      const selectedKendaraan = kendaraanList.find((k) => k.id === selectedKendaraanId);
+      if (selectedKendaraan) {
+        // Find matching tarif by jenis kendaraan
+        const matchingTarif = tarifList.find(
+          (t) => t.jenis_kendaraan_id === selectedKendaraan.jenis_kendaraan_id
+        );
+        setSelectedTarif(matchingTarif || null);
+      }
+    } else {
+      setSelectedTarif(null);
+    }
+  }, [selectedKendaraanId, tarifList]);
+
   const loadAreaData = async () => {
     try {
       const res = await areaParkirAPI.getAll();
@@ -69,6 +94,18 @@ function TransaksiContent() {
       }
     } catch (err: any) {
       console.error('Error loading areas:', err);
+    }
+  };
+
+  const loadTarif = async () => {
+    try {
+      const res = await tarifParkirAPI.getByArea(areaId);
+      const data = (res as any)?.data ?? [];
+      setTarifList(data);
+      console.log('✅ Tarif loaded for area', areaId, ':', data);
+    } catch (err: any) {
+      console.warn('⚠️ Error loading tarif for area:', err);
+      setTarifList([]);
     }
   };
 
@@ -150,11 +187,11 @@ function TransaksiContent() {
       // Catat kendaraan keluar
       const response = await transaksiAPI.keluar(transaksi.plat_nomor);
 
-      setSuccess(`✅ Kendaraan ${transaksi.plat_nomor} dicatat keluar!`);
-      // Redirect ke cetak struk dengan transaksi ID
-      setTimeout(() => {
-        router.push(`/petugas/cetak-struk?transaksi=${response.data.id}`);
-      }, 500);
+      setSuccess(`✅ Kendaraan ${transaksi.plat_nomor} dicatat keluar! Silakan cetak struk.`);
+      // Show struk modal instead of redirect
+      setTransaksiToPrint(response.data);
+      await loadTransaksiList();
+      setLoading(false);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Gagal mencatat kendaraan keluar');
       setLoading(false);
@@ -330,10 +367,16 @@ function TransaksiContent() {
                               <p className="text-sm"><span className="font-medium">Warna:</span> {selected.warna}</p>
                               <p className="text-sm"><span className="font-medium">Pemilik:</span> {selected.pemilik_nama}</p>
                               <p className="text-sm"><span className="font-medium">No. Telp:</span> {selected.pemilik_no_telp}</p>
-                              {/* Tarif Info */}
+                              {/* Tarif Info from DB */}
                               <div className="mt-3 pt-3 border-t border-blue-200">
-                                <p className="text-sm text-blue-800 font-semibold">💰 Tarif Dasar: <span className="text-lg">Rp 15.000/jam</span></p>
-                                <p className="text-xs text-blue-600 mt-1">Estimasi biaya akan dihitung saat kendaraan keluar</p>
+                                {selectedTarif ? (
+                                  <>
+                                    <p className="text-sm text-blue-800 font-semibold">💰 Tarif Dasar: <span className="text-lg">Rp {selectedTarif.tarif_per_jam?.toLocaleString('id-ID')}/jam</span></p>
+                                    <p className="text-xs text-blue-600 mt-1">Estimasi biaya akan dihitung saat kendaraan keluar</p>
+                                  </>
+                                ) : (
+                                  <p className="text-xs text-yellow-600 mt-1">⚠️ Tarif untuk {selected.nama_jenis} di area ini belum tersedia</p>
+                                )}
                               </div>
                             </>
                           ) : null;

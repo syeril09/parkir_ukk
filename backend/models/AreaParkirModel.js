@@ -22,6 +22,15 @@ class AreaParkirModel {
     return rows;
   }
 
+  // Cari area berdasarkan nama (unique)
+  static async findByName(namaArea) {
+    const [rows] = await pool.execute(
+      'SELECT * FROM area_parkir WHERE nama_area = ?',
+      [namaArea]
+    );
+    return rows[0];
+  }
+
   // Tambah area parkir baru
   static async create(data) {
     const { namaArea, jenisArea, lokasi, kapasitas, hargaPerJam, deskripsi } = data;

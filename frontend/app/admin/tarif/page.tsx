@@ -20,6 +20,7 @@ export default function TarifParkirPage() {
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     jenisKendaraan: '',
     tarifPerJam: 0
@@ -62,6 +63,8 @@ export default function TarifParkirPage() {
     e.preventDefault();
     setError('');
 
+    if (submitting) return; // Prevent double submission
+
     if (!formData.jenisKendaraan.trim()) {
       setError('Jenis kendaraan harus diisi');
       return;
@@ -73,6 +76,7 @@ export default function TarifParkirPage() {
     }
 
     try {
+      setSubmitting(true);
       const payload = {
         namaJenis: formData.jenisKendaraan,
         tarifPerJam: formData.tarifPerJam
@@ -88,6 +92,8 @@ export default function TarifParkirPage() {
       loadData();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Gagal menyimpan tarif');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -176,15 +182,17 @@ export default function TarifParkirPage() {
                   <button
                     type="button"
                     onClick={handleCancel}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+                    disabled={submitting}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
+                    disabled={submitting}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {editingId ? 'Perbarui' : 'Tambah'} Tarif
+                    {submitting ? 'Menyimpan...' : (editingId ? 'Perbarui' : 'Tambah')} Tarif
                   </button>
                 </div>
               </form>

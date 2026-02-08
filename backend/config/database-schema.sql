@@ -43,14 +43,14 @@ CREATE TABLE IF NOT EXISTS jenis_kendaraan (
 CREATE TABLE IF NOT EXISTS tarif_parkir (
   id INT PRIMARY KEY AUTO_INCREMENT,
   jenis_kendaraan_id INT NOT NULL,
-  area_parkir_id INT NOT NULL,
+  area_parkir_id INT,
   tarif_per_jam DECIMAL(10, 2) NOT NULL,
   tarif_per_hari DECIMAL(10, 2),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (jenis_kendaraan_id) REFERENCES jenis_kendaraan(id),
   FOREIGN KEY (area_parkir_id) REFERENCES area_parkir(id),
-  UNIQUE KEY unique_tarif (jenis_kendaraan_id, area_parkir_id)
+  UNIQUE KEY unique_tarif (jenis_kendaraan_id)
 );
 
 -- TABLE: KENDARAAN

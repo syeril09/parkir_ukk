@@ -18,33 +18,52 @@ interface Kendaraan {
   pemilik_no_telp: string;
 }
 
+interface JenisKendaraan {
+  id: number;
+  nama_jenis: string;
+}
+
 export default function DaftarKendaraanPage() {
   const [kendaraan, setKendaraan] = useState<Kendaraan[]>([]);
+  const [jenisKendaraan, setJenisKendaraan] = useState<JenisKendaraan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     platNomor: '',
-    jenisKendaraanId: '1',
+    jenisKendaraanId: '',
+    jenisKendaraanName: '',
     warna: '',
     pemilikNama: '',
     pemilikNoTelp: ''
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [jenisSuggestions, setJenisSuggestions] = useState<JenisKendaraan[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
-    loadKendaraan();
+    loadData();
   }, []);
 
-  const loadKendaraan = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const response = await kendaraanAPI.getAll();
-      setKendaraan(response.data || []);
+      const [kendaraanRes, jenisRes] = await Promise.all([
+        kendaraanAPI.getAll(),
+        kendaraanAPI.getAllJenis()
+      ]);
+      console.log('✅ loadData - kendaraanRes:', kendaraanRes);
+      console.log('✅ loadData - jenisRes:', jenisRes);
+      setKendaraan(kendaraanRes?.data || []);
+      // jenisRes may be an unknown shape when fetched via Promise.all; assert expected structure
+      const jenisData = (jenisRes as any)?.data ?? [];
+      setJenisKendaraan(jenisData as JenisKendaraan[]);
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Gagal memuat data kendaraan');
+      console.error('❌ loadData error:', err);
+      const errorMsg = err?.response?.data?.message || err?.message || 'Gagal memuat data';
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -52,7 +71,7 @@ export default function DaftarKendaraanPage() {
 
   const handleAddClick = () => {
     setEditingId(null);
-    setFormData({ platNomor: '', jenisKendaraanId: '1', warna: '', pemilikNama: '', pemilikNoTelp: '' });
+    setFormData({ platNomor: '', jenisKendaraanId: '', jenisKendaraanName: '', warna: '', pemilikNama: '', pemilikNoTelp: '' });
     setShowForm(true);
   };
 
@@ -62,14 +81,18 @@ export default function DaftarKendaraanPage() {
       const kendaraanDetail = response.data || response;
       console.log('🔍 Loaded kendaraan:', kendaraanDetail.plat_nomor, 'jenis:', kendaraanDetail.jenis_kendaraan_id);
       
-      const jenisId = String(kendaraanDetail.jenis_kendaraan_id || '1');
-      
+      const jenisId = kendaraanDetail.jenis_kendaraan_id ?? null;
+      const namaJenisFromDetail = kendaraanDetail.nama_jenis ?? '';
+      const namaJenisFromList = jenisKendaraan.find(j => j.id === jenisId)?.nama_jenis ?? '';
+      const jenisName = namaJenisFromDetail || namaJenisFromList || '';
+
       // Set all state at once with flushSync
       flushSync(() => {
         setEditingId(item.id);
         setFormData({
           platNomor: kendaraanDetail.plat_nomor || '',
-          jenisKendaraanId: jenisId,
+          jenisKendaraanId: jenisId ? String(jenisId) : '',
+          jenisKendaraanName: jenisName,
           warna: kendaraanDetail.warna || '',
           pemilikNama: kendaraanDetail.pemilik_nama || '',
           pemilikNoTelp: kendaraanDetail.pemilik_no_telp || ''
@@ -84,8 +107,36 @@ export default function DaftarKendaraanPage() {
     }
   };
 
+  const handleJenisInput = (value: string) => {
+    // Update display name and filter suggestions, but keep ID intact
+    setFormData({ ...formData, jenisKendaraanName: value });
+    
+    if (value.trim()) {
+      const filtered = jenisKendaraan.filter(j =>
+        j.nama_jenis.toLowerCase().includes(value.toLowerCase())
+      );
+      setJenisSuggestions(filtered);
+      setShowSuggestions(true);
+    } else {
+      setJenisSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const selectJenis = (jenis: JenisKendaraan) => {
+    setFormData({ ...formData, jenisKendaraanId: String(jenis.id), jenisKendaraanName: jenis.nama_jenis });
+    setShowSuggestions(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate that jenis_kendaraan_id is selected
+    if (!formData.jenisKendaraanId || isNaN(parseInt(formData.jenisKendaraanId))) {
+      setError('Pilih jenis kendaraan dari daftar');
+      return;
+    }
+    
     try {
       const submitData = {
         ...formData,
@@ -106,7 +157,7 @@ export default function DaftarKendaraanPage() {
       }
       console.log('✅ API Response:', result);
       setShowForm(false);
-      loadKendaraan();
+      loadData();
     } catch (err: any) {
       console.error('❌ Submit error:', err);
       setError(err.response?.data?.message || 'Gagal menyimpan kendaraan');
@@ -117,7 +168,7 @@ export default function DaftarKendaraanPage() {
     if (!confirm('Apakah Anda yakin ingin menghapus kendaraan ini?')) return;
     try {
       await kendaraanAPI.delete(id);
-      loadKendaraan();
+      loadData();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Gagal menghapus kendaraan');
     }
@@ -126,7 +177,8 @@ export default function DaftarKendaraanPage() {
   const handleCancel = () => {
     setShowForm(false);
     setEditingId(null);
-    setFormData({ platNomor: '', jenisKendaraanId: '1', warna: '', pemilikNama: '', pemilikNoTelp: '' });
+    setFormData({ platNomor: '', jenisKendaraanId: '', jenisKendaraanName: '', warna: '', pemilikNama: '', pemilikNoTelp: '' });
+    setShowSuggestions(false);
   };
 
   const filteredKendaraan = kendaraan.filter((k) =>
@@ -163,8 +215,13 @@ export default function DaftarKendaraanPage() {
 
             {/* Error Message */}
             {error && (
-              <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-                {error}
+              <div className="mb-6 p-4 bg-red-50 border border-red-300 text-red-800 rounded-lg">
+                <p className="font-semibold mb-2">⚠️ {error}</p>
+                <p className="text-sm mb-3">Pastikan backend server sudah berjalan:</p>
+                <code className="block bg-red-100 p-2 rounded text-xs mb-3">
+                  cd backend && node index.js
+                </code>
+                <p className="text-sm">Backend harus running di http://localhost:5000</p>
               </div>
             )}
 
@@ -179,7 +236,7 @@ export default function DaftarKendaraanPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Plat Nomor
+                        Plat Nomor <span className="text-gray-500 text-xs">(Max 20 karakter)</span>
                       </label>
                       <input
                         type="text"
@@ -187,31 +244,43 @@ export default function DaftarKendaraanPage() {
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            platNomor: e.target.value.toUpperCase()
+                            platNomor: e.target.value.toUpperCase().slice(0, 20)
                           })
                         }
                         className="w-full px-3 py-2 border-2 border-sky-300 rounded-lg text-slate-900 font-semibold placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 bg-white"
                         placeholder="Misal: AB 1234 CD"
+                        maxLength={20}
                         required
                       />
+                      <div className="text-xs text-gray-500 mt-1">{formData.platNomor.length}/20</div>
                     </div>
-                    <div>
+                    <div className="relative">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Jenis Kendaraan
                       </label>
-                      <select
-                        value={String(formData.jenisKendaraanId || '1')}
-                        onChange={(e) => {
-                          console.log('🎯 Select onChange:', e.target.value, '(Motor=1, Mobil=2, Bus=3)');
-                          setFormData({ ...formData, jenisKendaraanId: e.target.value })
-                        }}
-                        className="w-full px-3 py-2 border-2 border-sky-300 rounded-lg text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 bg-white"
+                      <input
+                        type="text"
+                        value={formData.jenisKendaraanName ?? ''}
+                        onChange={(e) => handleJenisInput(e.target.value)}
+                        onFocus={() => handleJenisInput(formData.jenisKendaraanName ?? '')}
+                        className="w-full px-3 py-2 border-2 border-sky-300 rounded-lg text-slate-900 font-semibold placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 bg-white"
+                        placeholder="Ketik atau pilih jenis kendaraan"
                         required
-                      >
-                        <option value="1">🏍️ Motor</option>
-                        <option value="2">🚗 Mobil</option>
-                        <option value="3">🚌 Bus</option>
-                      </select>
+                      />
+                      {showSuggestions && jenisSuggestions.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-sky-300 rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
+                          {jenisSuggestions.map((jenis) => (
+                            <button
+                              key={jenis.id}
+                              type="button"
+                              onClick={() => selectJenis(jenis)}
+                              className="w-full px-3 py-2 text-left hover:bg-sky-100 text-slate-900 font-semibold text-sm"
+                            >
+                              {jenis.nama_jenis}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

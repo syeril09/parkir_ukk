@@ -1,13 +1,13 @@
-const pool = require('../config/database');
+const db = require('../config/database');
 
 /**
  * KENDARAAN MODEL
  * Menangani semua query terkait kendaraan
  */
-class KendaraanModel {
+const KendaraanModel = {
   // Cari kendaraan berdasarkan plat nomor
-  static async findByPlatNomor(platNomor) {
-    const [rows] = await pool.execute(
+  findByPlatNomor: async (platNomor) => {
+    const [rows] = await db.execute(
       `SELECT k.*, j.nama_jenis 
        FROM kendaraan k 
        JOIN jenis_kendaraan j ON k.jenis_kendaraan_id = j.id 
@@ -15,11 +15,11 @@ class KendaraanModel {
       [platNomor]
     );
     return rows[0];
-  }
+  },
 
   // Cari kendaraan berdasarkan ID
-  static async findById(id) {
-    const [rows] = await pool.execute(
+  findById: async (id) => {
+    const [rows] = await db.execute(
       `SELECT k.*, j.nama_jenis 
        FROM kendaraan k 
        JOIN jenis_kendaraan j ON k.jenis_kendaraan_id = j.id 
@@ -27,34 +27,34 @@ class KendaraanModel {
       [id]
     );
     return rows[0];
-  }
+  },
 
   // Ambil semua kendaraan
-  static async findAll() {
-    const [rows] = await pool.execute(
+  findAll: async () => {
+    const [rows] = await db.execute(
       `SELECT k.*, j.nama_jenis 
        FROM kendaraan k 
        JOIN jenis_kendaraan j ON k.jenis_kendaraan_id = j.id 
        ORDER BY k.created_at DESC`
     );
     return rows;
-  }
+  },
 
   // Tambah kendaraan baru
-  static async create(data) {
+  create: async (data) => {
     const { platNomor, jenisKendaraanId, pemilikNama, pemilikNoTelp, warna } = data;
     console.log('📝 KendaraanModel.create - data:', data);
     console.log('   ✓ jenisKendaraanId:', jenisKendaraanId, 'type:', typeof jenisKendaraanId);
-    const [result] = await pool.execute(
+    const [result] = await db.execute(
       'INSERT INTO kendaraan (plat_nomor, jenis_kendaraan_id, pemilik_nama, pemilik_no_telp, warna) VALUES (?, ?, ?, ?, ?)',
       [platNomor, jenisKendaraanId, pemilikNama, pemilikNoTelp, warna]
     );
     console.log('   ✅ Inserted - id:', result.insertId);
     return result.insertId;
-  }
+  },
 
   // Update kendaraan - supports all fields
-  static async update(id, data) {
+  update: async (id, data) => {
     const { platNomor, jenisKendaraanId, pemilikNama, pemilikNoTelp, warna } = data;
     const updateFields = [];
     const updateValues = [];
@@ -71,37 +71,39 @@ class KendaraanModel {
     const query = `UPDATE kendaraan SET ${updateFields.join(', ')} WHERE id = ?`;
     console.log('🔄 UPDATE query:', query, 'values:', updateValues);
     
-    await pool.execute(query, updateValues);
-  }
+    await db.execute(query, updateValues);
+  },
 
   // Hapus kendaraan
-  static async delete(id) {
-    await pool.execute('DELETE FROM kendaraan WHERE id = ?', [id]);
-  }
+  delete: async (id) => {
+    await db.execute('DELETE FROM kendaraan WHERE id = ?', [id]);
+  },
 
   // Cari jenis kendaraan berdasarkan ID
-  static async findJenisKendaraanById(id) {
-    const [rows] = await pool.execute(
+  findJenisKendaraanById: async (id) => {
+    const [rows] = await db.execute(
       'SELECT * FROM jenis_kendaraan WHERE id = ?',
       [id]
     );
     return rows[0];
-  }
+  },
 
   // Ambil semua jenis kendaraan
-  static async findAllJenisKendaraan() {
-    const [rows] = await pool.execute(
+  findAllJenisKendaraan: async () => {
+    const [rows] = await db.execute(
       'SELECT * FROM jenis_kendaraan ORDER BY nama_jenis ASC'
     );
     return rows;
-  }
+  },
 
   // Buat jenis kendaraan baru
-  static async createJenisKendaraan(namJenis) {
-    const [result] = await pool.execute(
+  createJenisKendaraan: async (namJenis) => {
+    const [result] = await db.execute(
       'INSERT INTO jenis_kendaraan (nama_jenis) VALUES (?)',
       [namJenis]
     );
     return result.insertId;
   }
-}
+};
+
+module.exports = KendaraanModel;

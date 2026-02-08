@@ -5,7 +5,7 @@ import AdminSidebar from '@/components/AdminSidebar';
 import DashboardHeader from '@/components/DashboardHeader';
 import ProtectedLayout from '@/components/ProtectedLayout';
 import Modal from '@/components/Modal';
-import { areaParkirAPI } from '@/lib/api';
+import { areaParkirAPI, kendaraanAPI, tarifParkirAPI } from '@/lib/api';
 
 interface AreaParkir {
   id: number;
@@ -15,7 +15,7 @@ interface AreaParkir {
   kapasitas: number;
   tersedia: number;
   hargaPerJam?: number;
-  deskripsi?: string;
+  jenisKendaraanName?: string;
 }
 
 export default function KelolaAreaPage() {
@@ -26,16 +26,30 @@ export default function KelolaAreaPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     nama: '',
-    jenisArea: 'mobil',
+    jenisKendaraanId: '',
+    jenisKendaraanName: '',
     lokasi: '',
     kapasitas: 0,
     hargaPerJam: 0,
-    deskripsi: ''
   });
+  const [jenisList, setJenisList] = useState<{ id:number; nama_jenis:string }[]>([]);
+  const [jenisSuggestions, setJenisSuggestions] = useState<{ id:number; nama_jenis:string }[]>([]);
+  const [showJenisSuggestions, setShowJenisSuggestions] = useState(false);
 
   useEffect(() => {
     loadAreas();
+    loadJenis();
   }, []);
+
+  const loadJenis = async () => {
+    try {
+      const res = await kendaraanAPI.getAllJenis();
+      const data = (res as any)?.data ?? [];
+      setJenisList(data);
+    } catch (err) {
+      console.warn('Gagal memuat jenis kendaraan:', err);
+    }
+  };
 
   const loadAreas = async () => {
     try {
@@ -52,33 +66,49 @@ export default function KelolaAreaPage() {
 
   const handleAddClick = () => {
     setEditingId(null);
-    setFormData({ nama: '', jenisArea: 'mobil', lokasi: '', kapasitas: 0, hargaPerJam: 0, deskripsi: '' });
+    setFormData({ nama: '', jenisKendaraanId: '', jenisKendaraanName: '', lokasi: '', kapasitas: 0, hargaPerJam: 0 });
     setShowForm(true);
   };
 
-  const handleEditClick = (area: AreaParkir) => {
+  const handleEditClick = async (area: AreaParkir) => {
     setEditingId(area.id);
-    setFormData({
+    const base = {
       nama: area.nama,
-      jenisArea: area.jenisArea,
       lokasi: area.lokasi,
       kapasitas: area.kapasitas,
       hargaPerJam: (area as any).hargaPerJam ?? (area as any).harga_per_jam ?? 0,
-      deskripsi: (area as any).deskripsi ?? ''
-    });
+      jenisKendaraanId: '',
+      jenisKendaraanName: ''
+    } as any;
+
+    // Try to fetch tarif entries for this area and prefill jenis if exists
+    try {
+      const tarifsRes = await tarifParkirAPI.getByArea(area.id);
+      const tarifs = (tarifsRes as any)?.data ?? [];
+      if (tarifs && tarifs.length > 0) {
+        // pick first tarif as default
+        const t = tarifs[0];
+        base.jenisKendaraanId = String(t.jenis_kendaraan_id ?? t.jenisKendaraanId ?? t.id ?? '');
+        base.jenisKendaraanName = t.nama_jenis ?? t.namaJenis ?? '';
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    setFormData(base);
     setShowForm(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload = {
+      const payload: any = {
         namaArea: formData.nama,
-        jenisArea: formData.jenisArea,
         lokasi: formData.lokasi,
         kapasitas: formData.kapasitas,
         hargaPerJam: formData.hargaPerJam,
-        deskripsi: formData.deskripsi
+        jenisKendaraanId: formData.jenisKendaraanId ? parseInt(formData.jenisKendaraanId) : undefined,
+        jenisKendaraanName: formData.jenisKendaraanName || undefined
       };
 
       if (editingId) {
@@ -106,16 +136,14 @@ export default function KelolaAreaPage() {
   const handleCancel = () => {
     setShowForm(false);
     setEditingId(null);
-    setFormData({ nama: '', jenisArea: 'mobil', lokasi: '', kapasitas: 0, hargaPerJam: 0, deskripsi: '' });
+    setFormData({ nama: '', jenisKendaraanId: '', jenisKendaraanName: '', lokasi: '', kapasitas: 0, hargaPerJam: 0 });
   };
 
-  // Helper untuk display jenis area dengan icon
+  // Helper untuk display jenis area (no emoji)
   const getJenisAreaDisplay = (jenisArea: string | undefined) => {
     const jenis = jenisArea ?? 'mobil';
-    const icons: Record<string, string> = { mobil: '🚗', bus: '🚌', motor: '🏍️' };
     const labels: Record<string, string> = { mobil: 'Mobil', bus: 'Bus', motor: 'Motor' };
     return {
-      icon: icons[jenis] || '🚗',
       label: labels[jenis] || 'Mobil'
     };
   };
@@ -153,7 +181,7 @@ export default function KelolaAreaPage() {
               size="md"
             >
               <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Nama Area
@@ -169,23 +197,53 @@ export default function KelolaAreaPage() {
                         required
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Jenis Area
-                      </label>
-                      <select
-                        value={formData.jenisArea}
-                        onChange={(e) =>
-                          setFormData({ ...formData, jenisArea: e.target.value as 'mobil' | 'bus' | 'motor' })
-                        }
+                    <div className="relative">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan (ketik untuk memilih)</label>
+                      <input
+                        type="text"
+                        value={formData.jenisKendaraanName ?? ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setFormData({ ...formData, jenisKendaraanName: v, jenisKendaraanId: '' });
+                          if (v.trim()) {
+                            const filtered = jenisList.filter(j => j.nama_jenis.toLowerCase().includes(v.toLowerCase()));
+                            setJenisSuggestions(filtered);
+                            setShowJenisSuggestions(true);
+                          } else {
+                            setJenisSuggestions([]);
+                            setShowJenisSuggestions(false);
+                          }
+                        }}
+                        onFocus={() => {
+                          if (formData.jenisKendaraanName) {
+                            const filtered = jenisList.filter(j => j.nama_jenis.toLowerCase().includes(formData.jenisKendaraanName.toLowerCase()));
+                            setJenisSuggestions(filtered);
+                            setShowJenisSuggestions(true);
+                          }
+                        }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                        required
-                      >
-                        <option value="mobil">🚗 Mobil</option>
-                        <option value="bus">🚌 Bus</option>
-                        <option value="motor">🏍️ Motor</option>
-                      </select>
+                        placeholder="Ketik: Mobil, Truk, Bus, Motor..."
+                      />
+                      {showJenisSuggestions && jenisSuggestions.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded shadow z-20 max-h-40 overflow-y-auto">
+                          {jenisSuggestions.map((j) => (
+                            <button
+                              key={j.id}
+                              type="button"
+                              onClick={() => {
+                                setFormData({ ...formData, jenisKendaraanId: String(j.id), jenisKendaraanName: j.nama_jenis });
+                                setShowJenisSuggestions(false);
+                              }}
+                              className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm"
+                            >
+                              {j.nama_jenis}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Lokasi
@@ -243,20 +301,7 @@ export default function KelolaAreaPage() {
                         min="1000"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Deskripsi
-                      </label>
-                      <input
-                        key={`deskripsi-${editingId}`}
-                        type="text"
-                        value={formData.deskripsi ?? ''}
-                        onChange={(e) =>
-                          setFormData({ ...formData, deskripsi: e.target.value })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                      />
-                    </div>
+                    
                   </div>
                   <div className="flex gap-2 justify-end">
                     <button
@@ -282,14 +327,13 @@ export default function KelolaAreaPage() {
                 <div key={area.id} className="bg-white rounded-lg shadow p-6">
                   <div className="flex justify-between items-start mb-4">
                     <h3 className="font-semibold text-gray-900">{area.nama}</h3>
-                    <span className="text-2xl">🅿️</span>
                   </div>
                   <div className="mb-3">
                     <p className="text-xs inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
-                      {getJenisAreaDisplay(area.jenisArea).icon} {getJenisAreaDisplay(area.jenisArea).label}
+                      {area.jenisKendaraanName || getJenisAreaDisplay(area.jenisArea).label}
                     </p>
                   </div>
-                  <p className="text-sm text-gray-600 mb-3">📍 {area.lokasi}</p>
+                  <p className="text-sm text-gray-600 mb-3">{area.lokasi}</p>
                   <div className="mb-4">
                     <p className="text-sm text-gray-600">Kapasitas Total</p>
                     <p className="text-2xl font-bold text-gray-900">{area.kapasitas}</p>
@@ -301,9 +345,7 @@ export default function KelolaAreaPage() {
                       <p className="text-sm font-semibold text-gray-900">Rp {area.hargaPerJam.toLocaleString('id-ID')}</p>
                     </div>
                   )}
-                  {(area as any).deskripsi && (
-                    <p className="text-xs text-gray-500 mb-3 italic">{(area as any).deskripsi}</p>
-                  )}
+                  
                   <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
                     <div
                       className="bg-green-600 h-2 rounded-full"

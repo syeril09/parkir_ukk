@@ -1,0 +1,169 @@
+═══════════════════════════════════════════════════════════════════════
+🔧 SETUP & TROUBLESHOOTING GUIDE
+═══════════════════════════════════════════════════════════════════════
+
+❌ ERROR: "Gagal memuat data" di halaman Kendaraan
+═══════════════════════════════════════════════════════════════════════
+
+PENYEBAB:
+1. Backend server tidak running
+2. MySQL Database tidak running
+3. Database belum dibuat / schema tidak applied
+
+
+✅ SOLUSI LENGKAP (Step by Step)
+═══════════════════════════════════════════════════════════════════════
+
+STEP 1: Pastikan MySQL Berjalan
+─────────────────────────────────────────────────────────────────────
+
+Windows:
+  • Buka: Services (Services.msc)
+  • Cari: "MySQL80" atau "MySQL"
+  • Status: "Running"
+  • Jika belum: Klik kanan → Start
+
+Verify MySQL berjalan:
+  mysql -u root -p
+  (tekan Enter jika password kosong)
+  
+Harusnya muncul:
+  mysql>
+
+Exit:
+  EXIT;
+
+
+STEP 2: Setup Database
+─────────────────────────────────────────────────────────────────────
+
+Jalankan SQL schema file:
+
+  mysql -u root < backend/config/database-schema.sql
+
+Verify database sudah ada:
+  mysql -u root
+  SHOW DATABASES;
+  
+Harusnya lihat "db_parkir1"
+
+Verify tables:
+  USE db_parkir1;
+  SHOW TABLES;
+  
+Harusnya ada ~6 tables:
+  - users
+  - jenis_kendaraan
+  - area_parkir
+  - tarif_parkir
+  - kendaraan
+  - transaksi_parkir
+
+
+STEP 3: Start Backend Server
+─────────────────────────────────────────────────────────────────────
+
+Buka Terminal BARU, jalankan:
+
+  cd d:\parkir-project_syeril\backend
+  npm install
+  node index.js
+
+Harusnya muncul:
+  ╔═══════════════════════════════════════════════╗
+  ║   APLIKASI PARKIR - BACKEND SERVER            ║
+  ║   Server berjalan di http://localhost:5000    ║
+  ║   Environment: development                    ║
+  ╚═══════════════════════════════════════════════╝
+
+Jangan tutup terminal ini!
+
+
+STEP 4: Start Frontend Server
+─────────────────────────────────────────────────────────────────────
+
+Buka Terminal LAIN, jalankan:
+
+  cd d:\parkir-project_syeril\frontend
+  npm install
+  npm run dev
+
+Harusnya muncul:
+  ▲ Next.js 14.x.x
+  
+  ○ Local:        http://localhost:3000
+  ○ Environments: .env.local
+
+Buka browser: http://localhost:3000
+
+
+STEP 5: Test Login
+─────────────────────────────────────────────────────────────────────
+
+Username: admin
+Password: admin123
+
+Akses:
+  Dashboard    ✓
+  User Mgmt    ✓
+  Area Parkir  ✓
+  Kendaraan    ✓ (harusnya bisa load data sekarang!)
+  Tarif Parkir ✓
+  Log Aktivitas ✓
+
+
+📋 CHECKLIST
+═══════════════════════════════════════════════════════════════════════
+
+✓ MySQL running (Services.msc)
+✓ Database created (mysql -u root)
+✓ Schema applied (database-schema.sql)
+✓ Backend running (http://localhost:5000)
+✓ Frontend running (http://localhost:3000)
+✓ Can login with admin/admin123
+✓ Kendaraan page loads without error
+
+
+🚀 COMMON ERRORS & FIXES
+═══════════════════════════════════════════════════════════════════════
+
+ERROR: "Connection refused: 127.0.0.1:3306"
+FIX: MySQL tidak running → Start di Services.msc
+
+ERROR: "Unknown database 'db_parkir1'"
+FIX: Run: mysql -u root < backend/config/database-schema.sql
+
+ERROR: "ECONNREFUSED 127.0.0.1:5000"
+FIX: Backend tidak running → Run: node index.js di terminal backend
+
+ERROR: "404 - /api/kendaraan not found"
+FIX: Backend running tapi API route error → Check console backend
+
+ERROR: "Gagal memuat data" di Kendaraan page
+FIX: Semua langkah di atas belum selesai
+
+
+💡 QUICK REFERENCE
+═══════════════════════════════════════════════════════════════════════
+
+API URL:        http://localhost:5000/api
+Frontend:       http://localhost:3000
+Database:       localhost:3306 / db_parkir1
+Root user:      root (no password)
+
+Endpoints tested:
+  GET  /api/kendaraan            ✓
+  GET  /api/tarif-parkir         ✓
+  GET  /api/users                ✓
+  POST /api/kendaraan            ✓
+  PUT  /api/kendaraan/:id        ✓
+  DELETE /api/kendaraan/:id      ✓
+
+═══════════════════════════════════════════════════════════════════════
+
+Jika masih ada error, cek:
+1. Console frontend (F12 → Console tab)
+2. Console backend (terminal temp running node index.js)
+3. MySQL error log (Check MySQL in Services)
+
+═══════════════════════════════════════════════════════════════════════

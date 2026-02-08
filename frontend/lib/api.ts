@@ -107,6 +107,20 @@ export const kendaraanAPI = {
     return response.data;
   },
 
+  // Get all jenis kendaraan from tarif
+  getAllJenis: async () => {
+    const response = await apiClient.get('/tarif-parkir');
+    // response.data is the server wrapper { success, data, total }
+    const tarifs = (response.data && response.data.data) || [];
+    // Extract unique jenis kendaraan from tarif array
+    const uniqueJenis = Array.from(
+      new Map(
+        tarifs.map((t: any) => [t.jenis_kendaraan_id, { id: t.jenis_kendaraan_id, nama_jenis: t.nama_jenis }])
+      ).values()
+    );
+    return { data: uniqueJenis };
+  },
+
   // Create kendaraan
   create: async (data: any) => {
     const response = await apiClient.post('/kendaraan', data);

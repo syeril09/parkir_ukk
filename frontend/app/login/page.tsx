@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Cookies from 'js-cookie';
-import { authAPI } from '@/lib/api';
+// Delay importing client-only modules to runtime to avoid bundling/interop issues
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,6 +23,10 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
+
+      // Lazy-load API client and cookies on client runtime
+      const { authAPI } = await import('@/lib/api');
+      const Cookies = (await import('js-cookie')).default;
 
       // Login ke API
       const response = await authAPI.login(username, password);

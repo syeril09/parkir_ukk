@@ -27,9 +27,13 @@ export default function Modal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
+      {/* Backdrop - Shows blurred page content behind */}
       <div
-        className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
+        className="absolute inset-0 transition-opacity"
+        style={{
+          backdropFilter: 'blur(4px) brightness(0.95)',
+          backgroundColor: 'rgba(0, 0, 0, 0.05)'
+        }}
         onClick={onClose}
       />
 
