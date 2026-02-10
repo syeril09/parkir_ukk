@@ -98,13 +98,20 @@ class TransaksiParkirModel {
   // Buat transaksi parkir (kendaraan masuk)
   static async createMasuk(data) {
     const { kendaraanId, areaParkId, petugasMasukId, waktuMasuk, tarifPerJam } = data;
-    const [result] = await pool.execute(
-      `INSERT INTO transaksi_parkir 
-       (kendaraan_id, area_parkir_id, petugas_masuk_id, waktu_masuk, tarif_per_jam, status) 
-       VALUES (?, ?, ?, ?, ?, 'parkir')`,
-      [kendaraanId, areaParkId, petugasMasukId, waktuMasuk, tarifPerJam]
-    );
-    return result.insertId;
+    try {
+      console.log('TransaksiModel.createMasuk called with:', data);
+      const [result] = await pool.execute(
+        `INSERT INTO transaksi_parkir 
+         (kendaraan_id, area_parkir_id, petugas_masuk_id, waktu_masuk, tarif_per_jam, status) 
+         VALUES (?, ?, ?, ?, ?, 'parkir')`,
+        [kendaraanId, areaParkId, petugasMasukId, waktuMasuk, tarifPerJam]
+      );
+      console.log('DB insert result:', result);
+      return result.insertId;
+    } catch (error) {
+      console.error('Error in createMasuk:', error);
+      throw error;
+    }
   }
 
   // Update transaksi parkir (kendaraan keluar)

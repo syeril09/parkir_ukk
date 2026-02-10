@@ -65,7 +65,11 @@ class TransaksiParkirController {
   static async masuk(req, res, next) {
     try {
       const { platNomor, areaId } = req.body;
-      const petugasId = req.user.userId;
+      const petugasId = req.user?.userId;
+
+      console.log('=== TRANSAKSI MASUK REQUEST ===');
+      console.log('Body:', req.body);
+      console.log('Petugas ID from token:', petugasId);
 
       // Validasi input
       if (!platNomor || !areaId) {
@@ -129,8 +133,12 @@ class TransaksiParkirController {
         tarifPerJam: tarifPerJam
       });
 
+      console.log('Inserted transaksi ID:', transId);
+
       // Fetch transaksi yang baru dibuat untuk menampilkan data lengkap
       const transaksiCreated = await TransaksiParkirModel.findById(transId);
+
+      console.log('Fetched created transaksi:', transaksiCreated);
 
       res.status(201).json({
         success: true,
@@ -139,6 +147,7 @@ class TransaksiParkirController {
         data: transaksiCreated
       });
     } catch (error) {
+      console.error('Error in masuk controller:', error);
       next(error);
     }
   }

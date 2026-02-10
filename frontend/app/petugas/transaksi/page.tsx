@@ -24,7 +24,7 @@ interface Transaksi {
   status: string;
 }
 
-function TransaksiContent() {
+function TransaksiContent(): JSX.Element {
   const searchParams = useSearchParams();
   const router = useRouter();
   const tipeTransaksi = searchParams?.get('type') || 'masuk';
@@ -42,6 +42,11 @@ function TransaksiContent() {
   const [success, setSuccess] = useState('');
   const [searchPlat, setSearchPlat] = useState('');
   const [transaksiToPrint, setTransaksiToPrint] = useState<any | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'qris' | null>(null);
+  const [uangDiterima, setUangDiterima] = useState<number | null>(null);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [isKendaraanMasuk, setIsKendaraanMasuk] = useState(false);
 
   useEffect(() => {
     // Get user data
@@ -80,6 +85,72 @@ function TransaksiContent() {
       setSelectedTarif(null);
     }
   }, [selectedKendaraanId, tarifList]);
+
+  useEffect(() => {
+    // Generate QR code when QRIS method is selected
+    if (paymentMethod === 'qris' && transaksiToPrint?.total_bayar) {
+      generateQRCode(transaksiToPrint.total_bayar);
+    }
+  }, [paymentMethod, transaksiToPrint?.total_bayar]);
+
+  const handleKendaraanKeluar = async (transaksi: Transaksi) => {
+    if (!confirm(`Catat kendaraan ${transaksi.plat_nomor} keluar?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setIsKendaraanMasuk(false);
+      // Catat kendaraan keluar
+      const response = await transaksiAPI.keluar(transaksi.plat_nomor);
+
+      setSuccess(`✅ Kendaraan ${transaksi.plat_nomor} dicatat keluar!`);
+      // Show struk modal with payment flow
+      setTransaksiToPrint(response.data);
+      setPaymentMethod(null);
+      setUangDiterima(null);
+      setPaymentCompleted(false);
+      await loadTransaksiList();
+      setLoading(false);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Gagal mencatat kendaraan keluar');
+      setLoading(false);
+    }
+  };
+
+  const generateQRCode = async (amount: number) => {
+    try {
+      // For now, just log the intent - actual QR generation would happen server-side
+      console.log('Generate QR for amount:', amount);
+      // Placeholder: In production, would call server API to generate QRIS
+    } catch (err) {
+      console.error('Error generating QR code:', err);
+    }
+  };
+
+  const handleBayarTunai = () => {
+    if (!uangDiterima || uangDiterima < (transaksiToPrint?.total_bayar || 0)) {
+      setError('Uang diterima harus >= total pembayaran');
+      return;
+    }
+    setPaymentCompleted(true);
+    setError('');
+  };
+
+  const handleBayarQRIS = () => {
+    setPaymentCompleted(true);
+    setError('');
+  };
+
+  const resetModal = () => {
+    setTransaksiToPrint(null);
+    setPaymentMethod(null);
+    setUangDiterima(null);
+    setPaymentCompleted(false);
+    setIsKendaraanMasuk(false);
+    setSelectedKendaraanId(null);
+    setAreaId(1);
+  };
 
   const loadAreaData = async () => {
     try {
@@ -159,41 +230,34 @@ function TransaksiContent() {
       }
 
       if (tipeTransaksi === 'masuk') {
-        // Tambah transaksi masuk dengan plat nomor dari data kendaraan
-        const response = await transaksiAPI.masuk(selectedKendaraan.plat_nomor, areaId);
+        // Call backend to create transaksi masuk and persist in DB
+        const resp = await transaksiAPI.masuk(selectedKendaraan.plat_nomor, areaId);
 
+        if (!resp || !resp.success) {
+          setError(resp?.message || 'Gagal menyimpan transaksi masuk');
+          setLoading(false);
+          return;
+        }
+
+        // resp is { success, message, transaksiId, data }
         setSuccess(`✅ Kendaraan ${selectedKendaraan.plat_nomor} berhasil dicatat masuk!`);
-        // response is {success, message, transaksiId, data: {...}} - we need the data property
-        setTransaksiToPrint(response.data);
-        setSelectedKendaraanId(null);
-        setAreaId(1);
+        setTransaksiToPrint(resp.data);
+        setIsKendaraanMasuk(true);
+        // No payment step for 'masuk' so mark completed to show struk preview
+        setPaymentCompleted(true);
+
+        // Refresh transaksi list to include the new masuk entry
         await loadTransaksiList();
+
+        // reset form selection
+        setSelectedKendaraanId(null);
+        // set default area to first if exists
+        if (areas.length > 0) setAreaId(areas[0].id);
+
+        setLoading(false);
       }
-
-      setLoading(false);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Terjadi kesalahan saat menyimpan transaksi');
-      setLoading(false);
-    }
-  };
-
-  const handleKendaraanKeluar = async (transaksi: Transaksi) => {
-    if (!confirm(`Catat kendaraan ${transaksi.plat_nomor} keluar?`)) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      // Catat kendaraan keluar
-      const response = await transaksiAPI.keluar(transaksi.plat_nomor);
-
-      setSuccess(`✅ Kendaraan ${transaksi.plat_nomor} dicatat keluar! Silakan cetak struk.`);
-      // Show struk modal instead of redirect
-      setTransaksiToPrint(response.data);
-      await loadTransaksiList();
-      setLoading(false);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Gagal mencatat kendaraan keluar');
+      setError(err.response?.data?.message || 'Terjadi kesalahan saat membuat struk');
       setLoading(false);
     }
   };
@@ -390,14 +454,14 @@ function TransaksiContent() {
                       disabled={loading}
                       className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-lg transition"
                     >
-                      {loading ? '⏳ Menyimpan...' : '✅ Catat Masuk'}
+                      {loading ? '⏳ Menyimpan...' : '✅ Cetak Struk'}
                     </button>
                   </form>
 
                   {/* Info Box */}
                   <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
                     <p className="text-sm text-green-800">
-                      <strong>💡 Tips:</strong> Masukkan plat nomor kendaraan yang baru masuk area parkir dengan benar.
+                      <strong>💡 Tips:</strong> Pilih kendaraan dan area parkir, lalu cetak struk sebagai bukti masuk.
                     </p>
                   </div>
                 </div>
@@ -494,6 +558,7 @@ function TransaksiContent() {
               </div>
             </div>
           </div>
+
         </main>
 
         {/* Struk Print Modal */}
@@ -502,109 +567,249 @@ function TransaksiContent() {
             <div className="bg-white rounded-lg shadow-2xl max-w-lg w-full">
               {/* Modal Header */}
               <div className="bg-gradient-to-r from-sky-500 to-purple-600 text-white px-6 py-4">
-                <h3 className="text-lg font-bold">🧾 Cetak Struk Transaksi</h3>
+                <h3 className="text-lg font-bold">
+                  {isKendaraanMasuk ? '🅿️ Struk Masuk Parkir' : '🧾 Cetak Struk Keluar'}
+                </h3>
               </div>
 
-              {/* Struk Preview */}
-              <div className="p-6 overflow-y-auto max-h-96">
-                <div style={{ width: '80mm', margin: '0 auto', padding: '10mm', fontFamily: 'monospace', fontSize: '11px', border: '1px solid #ddd', borderRadius: '4px' }}>
-                  <div style={{ textAlign: 'center', marginBottom: '8mm' }}>
-                    <h1 style={{ fontSize: '16pt', marginBottom: '3mm', fontWeight: 'bold' }}>🅿️ BUKTI PARKIR</h1>
-                    <p style={{ fontSize: '8pt', color: '#666' }}>Sistem Manajemen Parkir</p>
+              {/* Payment Method Selection - if not completed and kendaraan keluar */}
+              {!paymentCompleted && !isKendaraanMasuk && (
+                <div className="p-6">
+                  <div className="mb-6">
+                    <p className="text-sm font-bold text-gray-700 mb-3 text-center">TOTAL PEMBAYARAN</p>
+                    <p className="text-4xl font-bold text-sky-600 text-center">
+                      Rp {(transaksiToPrint?.total_bayar || 0).toLocaleString('id-ID')}
+                    </p>
                   </div>
 
-                  <hr style={{ borderTop: '1px dashed #333', marginBottom: '8mm' }} />
-
-                  <div style={{ marginBottom: '6mm' }}>
-                    <p style={{ fontSize: '8pt', color: '#666' }}>PLAT NOMOR</p>
-                    <p style={{ fontSize: '13pt', fontWeight: 'bold' }}>{transaksiToPrint.plat_nomor}</p>
+                  <p className="text-xs font-bold text-gray-700 mb-4 uppercase text-center">PILIH METODE PEMBAYARAN</p>
+                  <div className="grid grid-cols-2 gap-3 mb-6">
+                    <button
+                      onClick={() => setPaymentMethod('cash')}
+                      className={`p-4 rounded-xl border-3 font-bold transition-all text-base ${
+                        paymentMethod === 'cash'
+                          ? 'border-sky-500 bg-sky-50 text-sky-700 shadow-lg'
+                          : 'border-gray-300 hover:border-sky-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      💵 CASH
+                    </button>
+                    <button
+                      onClick={() => setPaymentMethod('qris')}
+                      className={`p-4 rounded-xl border-3 font-bold transition-all text-base ${
+                        paymentMethod === 'qris'
+                          ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-lg'
+                          : 'border-gray-300 hover:border-purple-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      📱 QRIS
+                    </button>
                   </div>
 
-                  <div style={{ marginBottom: '6mm' }}>
-                    <p style={{ fontSize: '8pt', color: '#666' }}>JENIS KENDARAAN</p>
-                    <p style={{ fontSize: '9pt', fontWeight: 'bold' }}>{transaksiToPrint.nama_jenis}</p>
-                  </div>
-
-                  <div style={{ marginBottom: '6mm' }}>
-                    <p style={{ fontSize: '8pt', color: '#666' }}>AREA PARKIR</p>
-                    <p style={{ fontSize: '9pt' }}>{transaksiToPrint.nama_area}</p>
-                  </div>
-
-                  <hr style={{ borderTop: '1px dashed #333', marginBottom: '6mm' }} />
-
-                  <div style={{ marginBottom: '6mm' }}>
-                    <p style={{ fontSize: '8pt', color: '#666' }}>WAKTU MASUK</p>
-                    <p style={{ fontSize: '8pt' }}>{formatTanggal(transaksiToPrint.waktu_masuk)}</p>
-                  </div>
-
-                  {transaksiToPrint.waktu_keluar ? (
-                    <>
-                      <div style={{ marginBottom: '6mm' }}>
-                        <p style={{ fontSize: '8pt', color: '#666' }}>JAM MASUK - JAM KELUAR</p>
-                        <p style={{ fontSize: '11pt', fontWeight: 'bold', color: '#1976d2' }}>
-                          {formatJam(transaksiToPrint.waktu_masuk)} - {formatJam(transaksiToPrint.waktu_keluar)}
+                  {/* Cash Input */}
+                  {paymentMethod === 'cash' && (
+                    <div className="mb-6 p-4 bg-amber-50 rounded-xl border-2 border-amber-200">
+                      <p className="text-xs font-bold text-gray-700 mb-3 uppercase">Uang Diterima</p>
+                      <input
+                        type="number"
+                        value={uangDiterima || ''}
+                        onChange={(e) => setUangDiterima(Number(e.target.value))}
+                        placeholder="0"
+                        className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg text-slate-900 font-bold text-lg focus:outline-none focus:ring-2 focus:ring-amber-500 mb-3"
+                        autoFocus
+                      />
+                      <div className="bg-white p-3 rounded-lg">
+                        <p className="text-xs text-gray-600 mb-1">Kembalian</p>
+                        <p className={`text-2xl font-bold ${
+                          (uangDiterima || 0) >= (transaksiToPrint?.total_bayar || 0)
+                            ? 'text-sky-600'
+                            : 'text-red-600'
+                        }`}>
+                          Rp {Math.max(0, (uangDiterima || 0) - (transaksiToPrint?.total_bayar || 0)).toLocaleString('id-ID')}
                         </p>
                       </div>
+                    </div>
+                  )}
 
-                      <div style={{ marginBottom: '6mm' }}>
-                        <p style={{ fontSize: '8pt', color: '#666' }}>DURASI PARKIR</p>
-                        <p style={{ fontSize: '10pt', fontWeight: 'bold' }}>
-                          {hitungDurasi(transaksiToPrint.waktu_masuk, transaksiToPrint.waktu_keluar)}
-                        </p>
+                  {/* QRIS Info */}
+                  {paymentMethod === 'qris' && (
+                    <div className="mb-6 p-4 bg-purple-50 rounded-xl border-2 border-purple-200">
+                      <div className="text-center mb-3">
+                        <p className="text-sm font-bold text-purple-900 mb-1">Pembayaran Dana</p>
+                        <p className="text-xs text-gray-700">Pelanggan scan QRIS untuk membayar</p>
                       </div>
-                    </>
-                  ) : (
-                    <div style={{ marginBottom: '6mm' }}>
-                      <p style={{ fontSize: '8pt', color: '#666' }}>JAM MASUK</p>
-                      <p style={{ fontSize: '11pt', fontWeight: 'bold', color: '#1976d2' }}>
-                        {formatJam(transaksiToPrint.waktu_masuk)}
-                      </p>
+                      <div className="bg-white p-3 rounded-lg text-center">
+                        <p className="text-sm font-bold mb-2">Rp {(transaksiToPrint?.total_bayar || 0).toLocaleString('id-ID')}</p>
+                        <img
+                          src="/qris-dana.png"
+                          alt="QRIS Dana"
+                          className="mx-auto rounded-lg border-2 border-purple-200"
+                          style={{ maxWidth: '150px', height: '150px', objectFit: 'contain' }}
+                        />
+                        <p className="text-xs text-gray-600 mt-2">+62 821 4194 5168</p>
+                      </div>
                     </div>
                   )}
 
-                  {transaksiToPrint.waktu_keluar && (
-                    <div style={{ marginBottom: '6mm' }}>
-                      <p style={{ fontSize: '8pt', color: '#666' }}>TARIF PER JAM</p>
-                      <p style={{ fontSize: '8pt' }}>Rp {transaksiToPrint.tarif_per_jam?.toLocaleString('id-ID')}</p>
+                  {error && (
+                    <div className="mb-4 p-3 bg-red-100 text-red-700 text-xs rounded-lg">
+                      ⚠️ {error}
                     </div>
                   )}
 
-                  <hr style={{ borderTop: '1px dashed #333', marginBottom: '6mm' }} />
-
-                  {transaksiToPrint.total_bayar && (
-                    <div style={{ backgroundColor: '#e3f2fd', padding: '6mm', textAlign: 'center', marginBottom: '6mm', borderRadius: '3px' }}>
-                      <p style={{ fontSize: '8pt', color: '#666' }}>TOTAL BAYAR</p>
-                      <p style={{ fontSize: '14pt', fontWeight: 'bold', color: '#1976d2' }}>
-                        Rp {parseInt(transaksiToPrint.total_bayar).toLocaleString('id-ID')}
-                      </p>
-                    </div>
-                  )}
-
-                  <hr style={{ borderTop: '1px dashed #333', marginBottom: '6mm' }} />
-
-                  <div style={{ textAlign: 'center', fontSize: '7pt', color: '#999' }}>
-                    <p>Terima Kasih</p>
-                    <p>Semoga perjalanan Anda aman</p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={resetModal}
+                      className="flex-1 px-4 py-3 bg-gray-300 hover:bg-gray-400 text-gray-900 rounded-lg font-bold transition"
+                    >
+                      ← Kembali
+                    </button>
+                    <button
+                      onClick={() => paymentMethod === 'cash' ? handleBayarTunai() : handleBayarQRIS()}
+                      disabled={!paymentMethod || (paymentMethod === 'cash' && (uangDiterima === null || uangDiterima < (transaksiToPrint?.total_bayar || 0))) || paymentProcessing}
+                      className={`flex-1 px-4 py-3 rounded-lg font-bold transition text-white ${
+                        !paymentMethod || (paymentMethod === 'cash' && (uangDiterima === null || uangDiterima < (transaksiToPrint?.total_bayar || 0)))
+                          ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                          : 'bg-sky-500 hover:bg-sky-600'
+                      }`}
+                    >
+                      {paymentProcessing ? '⏳ Proses...' : '✓ Bayar'}
+                    </button>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* Struk Preview - if payment completed */}
+              {paymentCompleted && (
+                <div className="p-6 overflow-y-auto max-h-96">
+                  <div style={{ width: '80mm', margin: '0 auto', padding: '10mm', fontFamily: 'monospace', fontSize: '11px', border: '1px solid #ddd', borderRadius: '4px' }}>
+                    <div style={{ textAlign: 'center', marginBottom: '8mm' }}>
+                      <h1 style={{ fontSize: '16pt', marginBottom: '3mm', fontWeight: 'bold' }}>🅿️ BUKTI MASUK PARKIR</h1>
+                      <p style={{ fontSize: '8pt', color: '#666' }}>Sistem Manajemen Parkir</p>
+                    </div>
+
+                    <hr style={{ borderTop: '1px dashed #333', marginBottom: '8mm' }} />
+
+                    <div style={{ marginBottom: '6mm' }}>
+                      <p style={{ fontSize: '8pt', color: '#666' }}>PLAT NOMOR</p>
+                      <p style={{ fontSize: '13pt', fontWeight: 'bold' }}>{transaksiToPrint.plat_nomor}</p>
+                    </div>
+
+                    <div style={{ marginBottom: '6mm' }}>
+                      <p style={{ fontSize: '8pt', color: '#666' }}>JENIS KENDARAAN</p>
+                      <p style={{ fontSize: '9pt', fontWeight: 'bold' }}>{transaksiToPrint.nama_jenis}</p>
+                    </div>
+
+                    {transaksiToPrint.warna && (
+                      <div style={{ marginBottom: '6mm' }}>
+                        <p style={{ fontSize: '8pt', color: '#666' }}>WARNA</p>
+                        <p style={{ fontSize: '9pt' }}>{transaksiToPrint.warna}</p>
+                      </div>
+                    )}
+
+                    <div style={{ marginBottom: '6mm' }}>
+                      <p style={{ fontSize: '8pt', color: '#666' }}>AREA PARKIR</p>
+                      <p style={{ fontSize: '9pt' }}>{transaksiToPrint.nama_area}</p>
+                    </div>
+
+                    <hr style={{ borderTop: '1px dashed #333', marginBottom: '6mm' }} />
+
+                    <div style={{ marginBottom: '6mm' }}>
+                      <p style={{ fontSize: '8pt', color: '#666' }}>WAKTU MASUK</p>
+                      <p style={{ fontSize: '8pt' }}>{formatTanggal(transaksiToPrint.waktu_masuk)}</p>
+                    </div>
+
+                    {transaksiToPrint.waktu_keluar ? (
+                      <>
+                        <div style={{ marginBottom: '6mm' }}>
+                          <p style={{ fontSize: '8pt', color: '#666' }}>JAM MASUK - JAM KELUAR</p>
+                          <p style={{ fontSize: '11pt', fontWeight: 'bold', color: '#1976d2' }}>
+                            {formatJam(transaksiToPrint.waktu_masuk)} - {formatJam(transaksiToPrint.waktu_keluar)}
+                          </p>
+                        </div>
+
+                        <div style={{ marginBottom: '6mm' }}>
+                          <p style={{ fontSize: '8pt', color: '#666' }}>DURASI PARKIR</p>
+                          <p style={{ fontSize: '10pt', fontWeight: 'bold' }}>
+                            {hitungDurasi(transaksiToPrint.waktu_masuk, transaksiToPrint.waktu_keluar)}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ marginBottom: '6mm' }}>
+                        <p style={{ fontSize: '8pt', color: '#666' }}>JAM MASUK</p>
+                        <p style={{ fontSize: '11pt', fontWeight: 'bold', color: '#1976d2' }}>
+                          {formatJam(transaksiToPrint.waktu_masuk)}
+                        </p>
+                      </div>
+                    )}
+
+                    {transaksiToPrint.waktu_keluar && (
+                      <div style={{ marginBottom: '6mm' }}>
+                        <p style={{ fontSize: '8pt', color: '#666' }}>TARIF PER JAM</p>
+                        <p style={{ fontSize: '8pt' }}>Rp {transaksiToPrint.tarif_per_jam?.toLocaleString('id-ID')}</p>
+                      </div>
+                    )}
+
+                    {isKendaraanMasuk && (
+                      <>
+                        <div style={{ marginBottom: '6mm' }}>
+                          <p style={{ fontSize: '8pt', color: '#666' }}>NAMA PEMILIK</p>
+                          <p style={{ fontSize: '9pt' }}>{transaksiToPrint.pemilik_nama}</p>
+                        </div>
+
+                        <div style={{ marginBottom: '6mm' }}>
+                          <p style={{ fontSize: '8pt', color: '#666' }}>NO. TELP</p>
+                          <p style={{ fontSize: '9pt' }}>{transaksiToPrint.pemilik_no_telp}</p>
+                        </div>
+                      </>
+                    )}
+
+                    <hr style={{ borderTop: '1px dashed #333', marginBottom: '6mm' }} />
+
+                    {transaksiToPrint.total_bayar && (
+                      <div style={{ backgroundColor: '#e3f2fd', padding: '6mm', textAlign: 'center', marginBottom: '6mm', borderRadius: '3px' }}>
+                        <p style={{ fontSize: '8pt', color: '#666' }}>TOTAL BAYAR</p>
+                        <p style={{ fontSize: '14pt', fontWeight: 'bold', color: '#1976d2' }}>
+                          Rp {parseInt(transaksiToPrint.total_bayar).toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                    )}
+
+                    <hr style={{ borderTop: '1px dashed #333', marginBottom: '6mm' }} />
+
+                    <div style={{ textAlign: 'center', fontSize: '7pt', color: '#999' }}>
+                      <p>Terima Kasih</p>
+                      {isKendaraanMasuk ? (
+                        <p>Simpan struk ini sebagai bukti masuk</p>
+                      ) : (
+                        <p>Semoga perjalanan Anda aman</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Modal Footer */}
               <div className="border-t border-gray-200 px-6 py-4 flex gap-3 justify-end">
-                <button
-                  onClick={() => setTransaksiToPrint(null)}
-                  className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 rounded-lg font-medium transition"
-                >
-                  ✕ Tutup
-                </button>
-                <button
-                  onClick={() => {
-                    window.print();
-                  }}
-                  className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition"
-                >
-                  🖨️ Cetak
-                </button>
+                {paymentCompleted && (
+                  <>
+                    <button
+                      onClick={resetModal}
+                      className="flex-1 px-4 py-3 bg-gray-400 hover:bg-gray-500 text-white rounded-lg font-bold transition"
+                    >
+                      {isKendaraanMasuk ? '↻ Input Baru' : '↻ Transaksi Baru'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        window.print();
+                      }}
+                      className="flex-1 px-4 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-lg font-bold transition"
+                    >
+                      🖨️ Cetak Struk
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
