@@ -248,6 +248,8 @@ function TransaksiContent(): JSX.Element {
 
         // Refresh transaksi list to include the new masuk entry
         await loadTransaksiList();
+        // Refresh areas to update available capacity after a masuk
+        await loadAreaData();
 
         // reset form selection
         setSelectedKendaraanId(null);
@@ -756,11 +758,6 @@ function TransaksiContent(): JSX.Element {
                         <div style={{ marginBottom: '6mm' }}>
                           <p style={{ fontSize: '8pt', color: '#666' }}>NAMA PEMILIK</p>
                           <p style={{ fontSize: '9pt' }}>{transaksiToPrint.pemilik_nama}</p>
-                        </div>
-
-                        <div style={{ marginBottom: '6mm' }}>
-                          <p style={{ fontSize: '8pt', color: '#666' }}>NO. TELP</p>
-                          <p style={{ fontSize: '9pt' }}>{transaksiToPrint.pemilik_no_telp}</p>
                         </div>
                       </>
                     )}
