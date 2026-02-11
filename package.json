@@ -4,7 +4,9 @@
   "description": "QRIS Generator for Parkir App",
   "main": "generate-qris.js",
   "scripts": {
-    "generate-qris": "node generate-qris.js"
+    "generate-qris": "node generate-qris.js",
+    "build": "cd backend && npm install && npx prisma generate",
+    "start": "cd backend && npm start"
   },
   "dependencies": {
     "@prisma/client": "^7.3.0",
