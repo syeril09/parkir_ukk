@@ -5,11 +5,10 @@
   "main": "generate-qris.js",
   "scripts": {
     "generate-qris": "node generate-qris.js",
-    "build": "cd backend && npm install && npx prisma generate",
+    "build": "cd backend && npm install",
     "start": "cd backend && npm start"
   },
   "dependencies": {
-    "@prisma/client": "^7.3.0",
     "qrcode": "^1.5.3",
     "qris": "^0.0.1"
   }
